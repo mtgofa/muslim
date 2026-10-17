@@ -214,9 +214,8 @@ fun HomeScreen(
         item {
             val wirdRev by com.mtgofa.muslem.data.Wird.changes.collectAsState()
             key(wirdRev) {
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    com.mtgofa.muslem.data.Wird.active.forEach { k -> KhatmaCard(k, onWird) { onReadWird(k.next) } }
-                }
+                val list = com.mtgofa.muslem.data.Wird.active
+                if (list.isNotEmpty()) KhatmaSlider(list, onWird, onReadWird)
             }
         }
         // everything else as square tiles, three per row (this replaces the bottom bar)
@@ -246,6 +245,29 @@ fun HomeScreen(
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
             )
+        }
+    }
+}
+
+/** Active khatmas side by side, one card in view, with a dot per khatma underneath. */
+@Composable
+private fun KhatmaSlider(list: List<com.mtgofa.muslem.data.Khatma>, onOpen: () -> Unit, onRead: (Int) -> Unit) {
+    val pager = androidx.compose.foundation.pager.rememberPagerState { list.size }
+    Column(Modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        androidx.compose.foundation.pager.HorizontalPager(
+            pager,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            pageSpacing = 10.dp,
+            verticalAlignment = Alignment.Top,
+        ) { i -> val k = list[i]; KhatmaCard(k, onOpen) { onRead(k.next) } }
+        if (list.size > 1) Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(list.size) { i ->
+                val on = i == pager.currentPage
+                Box(
+                    Modifier.height(7.dp).width(if (on) 18.dp else 7.dp)
+                        .background(if (on) Color(0xFFC0392B) else Color(0x33C0392B), CircleShape),
+                )
+            }
         }
     }
 }
