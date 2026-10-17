@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import com.mtgofa.muslem.data.AlertMode
 import com.mtgofa.muslem.data.Settings
 import com.mtgofa.muslem.prayer.AdhanService
-import com.mtgofa.muslem.prayer.EventType
 import com.mtgofa.muslem.prayer.Prayer
 import com.mtgofa.muslem.prayer.Scheduler
 import java.time.LocalDate
@@ -83,10 +82,10 @@ fun PrayerSheet(p: Prayer, onDismiss: () -> Unit) {
 
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (p.hasAdhan) OutlinedButton(onClick = { AdhanService.test(ctx, EventType.ADHAN, p) }, modifier = Modifier.weight(1f)) {
+                if (p.hasAdhan) OutlinedButton(onClick = { AdhanService.preview(ctx, Settings.muezzinFor(p)) }, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(4.dp)); Text("جرّب الأذان")
                 }
-                OutlinedButton(onClick = { AdhanService.test(ctx, EventType.PRE, p) }, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = { AdhanService.preview(ctx, null) }, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(4.dp)); Text("جرّب التنبيه")
                 }
             }

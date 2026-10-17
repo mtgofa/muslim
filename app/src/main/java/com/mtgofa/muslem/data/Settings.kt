@@ -90,6 +90,9 @@ object Settings {
     var fajrMuezzin: String
         get() = sp.getString("fajrMuezzin", "")!!
         set(v) = edit { putString("fajrMuezzin", v) }
+    /** The voice that calls this prayer (Fajr may have its own). */
+    fun muezzinFor(p: Prayer) = if (p == Prayer.FAJR && fajrMuezzin.isNotEmpty()) fajrMuezzin else muezzin
+
     var adhanVolume: Int
         get() = sp.getInt("adhanVol", 100)
         set(v) = edit { putInt("adhanVol", v) }

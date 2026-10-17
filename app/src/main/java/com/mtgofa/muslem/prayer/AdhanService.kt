@@ -84,8 +84,7 @@ class AdhanService : Service() {
         if (inCall && Settings.muteInCall) { finish(); return }
 
         if (fullAdhan) {
-            val id = if (prayer == Prayer.FAJR && Settings.fajrMuezzin.isNotEmpty()) Settings.fajrMuezzin else Settings.muezzin
-            startSound(Muezzins.uri(this, Muezzins.byId(id)), Settings.adhanVolume, repeats = 1)
+            startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), Settings.adhanVolume, repeats = 1)
         } else {
             startSound(tasbeehUri(this), Settings.alertVolume, repeats = 2)
         }
@@ -208,16 +207,6 @@ class AdhanService : Service() {
             androidx.core.content.ContextCompat.startForegroundService(
                 ctx, Intent(ctx, AdhanService::class.java).setAction(ACTION_PREVIEW).apply {
                     if (muezzinId != null) putExtra("muezzin", muezzinId)
-                },
-            )
-        }
-
-        /** Fire an event right now — used by the "test" buttons. */
-        fun test(ctx: Context, type: EventType, prayer: Prayer) {
-            androidx.core.content.ContextCompat.startForegroundService(
-                ctx, Intent(ctx, AdhanService::class.java).setAction(ACTION_PLAY).apply {
-                    putExtra("type", type.name); putExtra("prayer", prayer.name)
-                    putExtra("prayerTime", Scheduler.today()[prayer].toInstant().toEpochMilli())
                 },
             )
         }
