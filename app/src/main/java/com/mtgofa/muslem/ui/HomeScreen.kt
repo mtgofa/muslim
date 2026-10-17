@@ -60,6 +60,7 @@ import com.mtgofa.muslem.prayer.Reliability
 import com.mtgofa.muslem.prayer.Scheduler
 import com.mtgofa.muslem.prayer.arabicDigits
 import com.mtgofa.muslem.quran.QuranDb
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.LocalDate
@@ -105,7 +106,17 @@ fun HomeScreen(
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
     var now by remember { mutableStateOf(ZonedDateTime.now(Settings.zone)) }
-    LaunchedEffect(Unit) { while (true) { now = ZonedDateTime.now(Settings.zone); delay(1000) } }
+    // tick once a second, on the second, only while this screen is visible: a ticker that
+    // keeps running in the background wakes the CPU every second and drains the battery
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(lifecycle) {
+        lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            while (true) {
+                now = ZonedDateTime.now(Settings.zone)
+                delay(1000 - System.currentTimeMillis() % 1000)
+            }
+        }
+    }
     val today = now.toLocalDate()
     val times = remember(today, changes) { Scheduler.times(today) }
     val (next, nextAt) = remember(now.withSecond(0).withNano(0), changes) { Scheduler.nextPrayer(now) }
@@ -127,7 +138,7 @@ fun HomeScreen(
             // for a while after an adhan the header counts up ("الظهر منذ") before moving on
             val justCalled = prevPrayer.hasAdhan && since < SINCE_WINDOW
             PrayerHeader(
-                period = SkyPeriod.of(Scheduler.currentPrayer(now)),
+                period = remember(now.withSecond(0).withNano(0), changes) { SkyPeriod.of(Scheduler.currentPrayer(now)) },
                 location = Settings.locationName,
                 hijri = Hijri.of(today).toString(),
                 date = gregorian(today),
