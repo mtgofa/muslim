@@ -70,6 +70,7 @@ import com.mtgofa.muslem.ui.AdhkarChapterScreen
 import com.mtgofa.muslem.ui.AdhkarHomeScreen
 import com.mtgofa.muslem.ui.HisnScreen
 import com.mtgofa.muslem.ui.QiblaScreen
+import com.mtgofa.muslem.ui.WirdScreen
 import com.mtgofa.muslem.ui.TasbeehScreen
 import com.mtgofa.muslem.ui.HomeScreen
 import com.mtgofa.muslem.ui.LocationScreen
@@ -103,11 +104,14 @@ sealed interface Route {
     data object Tasbeeh : Route
     data object AdhkarHome : Route
     data object Settings : Route
+    data object Wird : Route
     data class Adhkar(val id: Int) : Route
 }
 
 class MainActivity : ComponentActivity() {
     private val openMushaf = MutableStateFlow(false)
+    /** page to open the Mushaf at (from the wird reminder), 0 = last read */
+    private val openPage = MutableStateFlow(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -117,12 +121,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Settings.init(this)
         openMushaf.value = intent?.getBooleanExtra("openMushaf", false) == true
-        setContent { MuslemTheme { App(openMushaf) } }
+        openPage.value = intent?.getIntExtra("page", 0) ?: 0
+        setContent { MuslemTheme { App(openMushaf, openPage) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.getBooleanExtra("openMushaf", false)) openMushaf.value = true
+        if (intent.getBooleanExtra("openMushaf", false)) {
+            openPage.value = intent.getIntExtra("page", 0)
+            openMushaf.value = true
+        }
     }
 
     override fun onResume() {
@@ -132,7 +140,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(openMushaf: MutableStateFlow<Boolean>) {
+private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlow<Int>) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var dbReady by remember { mutableStateOf(false) }
@@ -163,7 +171,10 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
     LaunchedEffect(wantMushaf, dbReady) {
         if (wantMushaf && dbReady) {
             openMushaf.value = false
-            if (stack.lastOrNull() !is Route.Mushaf) push(Route.Mushaf(Settings.lastPage, null))
+            val page = openPage.value.takeIf { it > 0 } ?: Settings.lastPage
+            openPage.value = 0
+            if (stack.lastOrNull() is Route.Mushaf) stack.removeAt(stack.lastIndex)
+            push(Route.Mushaf(page, null))
         }
     }
 
@@ -197,6 +208,8 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                     onTasbeeh = { push(Route.Tasbeeh) },
                     onHisn = { push(Route.Hisn) },
                     onSettings = { push(Route.Settings) },
+                    onWird = { push(Route.Wird) },
+                    onReadWird = { push(Route.Mushaf(it, null)) },
                 )
                 Route.QuranIndex -> QuranIndexScreen(onBack = ::pop) { page, s, a ->
                     push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null))
@@ -221,6 +234,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                 is Route.Mushaf -> MushafScreen(route.page, route.focus, ::pop)
                 Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }
                 Route.Qibla -> QiblaScreen(::pop)
+                Route.Wird -> WirdScreen(::pop) { push(Route.Mushaf(it, null)) }
                 is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
         }

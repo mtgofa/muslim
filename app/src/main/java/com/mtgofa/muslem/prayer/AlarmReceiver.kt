@@ -35,5 +35,6 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Settings.init(ctx)
         Scheduler.schedule(ctx)
+        com.mtgofa.muslem.data.Wird.schedule(ctx)
     }
 }

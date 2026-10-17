@@ -1,6 +1,8 @@
 package com.mtgofa.muslem.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.runtime.key
+import androidx.compose.material.icons.rounded.EventNote
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.AutoStories
@@ -113,6 +115,8 @@ fun HomeScreen(
     onTasbeeh: () -> Unit,
     onHisn: () -> Unit,
     onSettings: () -> Unit,
+    onWird: () -> Unit,
+    onReadWird: (Int) -> Unit,
 ) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
@@ -207,6 +211,10 @@ fun HomeScreen(
             val sura = remember(page) { runCatching { QuranDb.page(page).suras.firstOrNull()?.let { QuranDb.surah(it).name } }.getOrNull() }
             ContinueReading(sura, page) { onOpenQuran(page) }
         }
+        item {
+            val wirdRev by com.mtgofa.muslem.data.Wird.changes.collectAsState()
+            if (com.mtgofa.muslem.data.Wird.active) key(wirdRev) { WirdCard(onOpen = onWird, onRead = onReadWird) }
+        }
         // everything else as square tiles, three per row (this replaces the bottom bar)
         item {
             val tiles = listOf(
@@ -214,6 +222,7 @@ fun HomeScreen(
                 Tile("الأذكار", Icons.Rounded.AutoStories, Color(0xFF6A55B5), Color(0xFFEEE8FF), onAdhkar),
                 Tile("السبحة", null, Color(0xFFB8893A), Color(0xFFFFF3E0), onTasbeeh),
                 Tile("القبلة", Icons.Rounded.Explore, Color(0xFF2B7FC1), Color(0xFFE3F0FB), onQibla),
+                Tile("الورد اليومي", Icons.Rounded.EventNote, Color(0xFFC0392B), Color(0xFFFDEDEB), onWird),
                 Tile("حصن المسلم", Icons.Rounded.Shield, Color(0xFF1F7A5A), Color(0xFFE6F4EF), onHisn),
                 Tile("الإعدادات", Icons.Rounded.Settings, Color(0xFF5E6A64), Color(0xFFEFF1EE), onSettings),
             )
@@ -221,6 +230,7 @@ fun HomeScreen(
                 tiles.chunked(3).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { t -> TileView(t, Modifier.weight(1f)) }
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
@@ -233,6 +243,49 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun WirdCard(onOpen: () -> Unit, onRead: (Int) -> Unit) {
+    val w = com.mtgofa.muslem.data.Wird
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFFFFF4E6))
+            .clickable(onClick = onOpen)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                val st = 6.dp.toPx(); val inset = st / 2
+                val sz = androidx.compose.ui.geometry.Size(size.width - st, size.height - st)
+                drawArc(Color(0xFFF6DDB8), 0f, 360f, false, androidx.compose.ui.geometry.Offset(inset, inset), sz, style = androidx.compose.ui.graphics.drawscope.Stroke(st))
+                val f = if (w.pagesPerDay == 0) 0f else w.readToday.toFloat() / w.pagesPerDay
+                drawArc(Color(0xFFC0392B), -90f, 360f * f.coerceAtMost(1f), false, androidx.compose.ui.geometry.Offset(inset, inset), sz,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(st, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+            }
+            Text(arabicDigits(w.leftToday), style = MaterialTheme.typography.titleMedium, color = Color(0xFF8A2A1F))
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text("الورد اليومي", style = MaterialTheme.typography.titleMedium)
+            Text(
+                when {
+                    w.complete -> "أتممت الختمة، ما شاء الله"
+                    w.leftToday == 0 -> "أتممت ورد اليوم ✓ · الختام ${wirdDate(w.expectedEnd())}"
+                    else -> "باقي ${w.pages(w.leftToday)} اليوم · الختام ${wirdDate(w.expectedEnd())}"
+                },
+                style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
+            )
+        }
+        if (!w.complete && w.leftToday > 0) Text(
+            "اقرأ", style = MaterialTheme.typography.labelLarge, color = Color.White,
+            modifier = Modifier.clip(CircleShape).background(Color(0xFFC0392B)).clickable { onRead(w.next) }.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
     }
 }
 

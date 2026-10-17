@@ -202,7 +202,18 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
             bars?.isAppearanceLightNavigationBars = true
         }
     }
-    LaunchedEffect(pager) { snapshotFlow { pager.currentPage }.collect { Settings.lastPage = it + 1 } }
+    val ctx = LocalContext.current
+    val wirdRev by com.mtgofa.muslem.data.Wird.changes.collectAsState()
+    LaunchedEffect(pager) {
+        var prev = pager.currentPage + 1
+        snapshotFlow { pager.currentPage }.collect {
+            val now = it + 1
+            Settings.lastPage = now
+            // turning forward past the next wird page records it as read
+            com.mtgofa.muslem.data.Wird.onPageTurn(ctx, prev, now)
+            prev = now
+        }
+    }
     // show the bars briefly on open, then give the whole screen to the page
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(2500); chrome = false }
     // follow the recitation across pages
@@ -297,6 +308,28 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     onRepeat = { sheet = "repeat" },
                     onIndex = { sheet = "index" },
                 )
+            }
+        }
+        // ---- daily wird: what is left today; on the wird's last page, a button to record it
+        key(wirdRev) {
+            val w = com.mtgofa.muslem.data.Wird
+            if (w.active && !w.complete) Row(
+                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = if (chrome) 70.dp else 4.dp)
+                    .clip(CircleShape).background(Color(0xE6C0392B)).padding(horizontal = 14.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (w.leftToday == 0) "أتممت ورد اليوم ✓" else "الورد: باقي ${w.pages(w.leftToday)}",
+                    style = MaterialTheme.typography.labelLarge, color = Color.White,
+                )
+                // the very last page has no page after it to turn to
+                if (page == w.next && page == com.mtgofa.muslem.data.Wird.LAST_PAGE) {
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "تمّ ✓", style = MaterialTheme.typography.labelLarge, color = Color(0xFFC0392B),
+                        modifier = Modifier.clip(CircleShape).background(Color.White).clickable { w.markRead(ctx) }.padding(horizontal = 10.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
         // ---- meanings mode: the tapped word's meaning, and a way to see the whole page

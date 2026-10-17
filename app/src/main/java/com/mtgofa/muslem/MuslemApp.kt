@@ -13,9 +13,11 @@ class MuslemApp : Application() {
         super.onCreate()
         Settings.init(this)
         com.mtgofa.muslem.data.Content.init(this)
+        com.mtgofa.muslem.data.Wird.init(this)
         createChannels()
         thread(name = "quran-db") { QuranDb.init(this) }
         Scheduler.schedule(this)
+        com.mtgofa.muslem.data.Wird.schedule(this)
     }
 
     private fun createChannels() {
@@ -26,6 +28,11 @@ class MuslemApp : Application() {
                 setSound(null, null) // the service plays the audio itself on the alarm stream
                 enableVibration(true)
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_WIRD, "الورد اليومي", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "تذكير يومي بورد القرآن"
             },
         )
         nm.createNotificationChannel(
@@ -40,5 +47,6 @@ class MuslemApp : Application() {
     companion object {
         const val CH_ADHAN = "adhan"
         const val CH_STATUS = "status"
+        const val CH_WIRD = "wird"
     }
 }
