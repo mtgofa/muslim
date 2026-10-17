@@ -24,9 +24,6 @@ private object Orn {
  * drawn with paths and cached as bitmaps per size, since they appear on every page.
  */
 object Ornaments {
-    /** Colour of the number inside the page badge. */
-    const val BADGE_INK = 0xFF175E43.toInt()
-
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE; strokeJoin = Paint.Join.MITER; strokeCap = Paint.Cap.BUTT
@@ -136,50 +133,5 @@ object Ornaments {
         fill.color = Orn.EMERALD; c.drawPath(star8(x, y, r * 0.72f), fill)
         stroke.color = Orn.GOLD_LIGHT; stroke.strokeWidth = h * 0.014f; c.drawPath(star8(x, y, r * 0.55f), stroke)
         fill.color = Orn.GOLD; c.drawCircle(x, y, r * 0.16f, fill)
-    }
-
-    // ============================================================== page-number badge
-
-    /**
-     * A small tag that points toward the page's outer edge (right on right-hand pages), with an
-     * eight-point star in its point. Returns the area that holds the number.
-     */
-    @Synchronized
-    fun pageBadge(c: Canvas, w: Float, h: Float, pointRight: Boolean): RectF {
-        val tipW = h * 0.75f
-        val body = if (pointRight) RectF(h * 0.08f, h * 0.12f, w - tipW, h * 0.88f)
-        else RectF(tipW, h * 0.12f, w - h * 0.08f, h * 0.88f)
-        c.drawBitmap(cached("badge:${w.toInt()}:${h.toInt()}:$pointRight", w.toInt(), h.toInt()) { drawBadge(it, w, h, body, pointRight) }, 0f, 0f, null)
-        return body
-    }
-
-    private fun drawBadge(c: Canvas, w: Float, h: Float, body: RectF, pointRight: Boolean) {
-        val cy = h / 2
-        val tipX = if (pointRight) w - h * 0.06f else h * 0.06f
-        val baseX = if (pointRight) body.right else body.left
-        val back = if (pointRight) body.left else body.right
-        val rr = body.height() * 0.22f
-        val shape = Path().apply {
-            moveTo(baseX, body.top)
-            lineTo(tipX, cy)
-            lineTo(baseX, body.bottom)
-            if (pointRight) {
-                lineTo(back + rr, body.bottom); quadTo(back, body.bottom, back, body.bottom - rr)
-                lineTo(back, body.top + rr); quadTo(back, body.top, back + rr, body.top)
-            } else {
-                lineTo(back - rr, body.bottom); quadTo(back, body.bottom, back, body.bottom - rr)
-                lineTo(back, body.top + rr); quadTo(back, body.top, back - rr, body.top)
-            }
-            close()
-        }
-        fill.color = Orn.CREAM; c.drawPath(shape, fill)
-        stroke.color = Orn.GOLD; stroke.strokeWidth = h * 0.06f; c.drawPath(shape, stroke)
-        // star in the point
-        val sx = baseX + (tipX - baseX) * 0.32f
-        fill.color = Orn.EMERALD; c.drawPath(star8(sx, cy, h * 0.17f), fill)
-        // thin inner rule along the body
-        stroke.color = Orn.EMERALD_LIGHT; stroke.strokeWidth = h * 0.025f
-        val inset = h * 0.12f
-        c.drawRoundRect(RectF(body.left + inset, body.top + inset, body.right - inset, body.bottom - inset), rr * 0.6f, rr * 0.6f, stroke)
     }
 }

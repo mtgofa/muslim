@@ -89,6 +89,21 @@ object QuranDb {
             if (c.moveToFirst()) c.getString(0) else ""
         }
 
+    /**
+     * The first [words] words of the next page (the printed Mushaf's catchword at the foot of the
+     * page). The next page may start mid-ayah, so we skip the words already shown.
+     */
+    fun catchword(page: Int, words: Int = 2): String {
+        if (page >= 604) return ""
+        val first = page(page + 1).lines.flatMap { it.glyphs }.firstOrNull { it.type == GlyphType.WORD } ?: return ""
+        val shown = db.rawQuery(
+            "SELECT COUNT(*) FROM glyph WHERE sura=? AND ayah=? AND type=${GlyphType.WORD} AND page<=?",
+            arrayOf("${first.sura}", "${first.ayah}", "$page"),
+        ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+        val tokens = ayahText(first.sura, first.ayah).split(' ').filter { t -> t.any { it in '\u0621'..'\u064A' } }
+        return tokens.drop(shown).take(words).joinToString(" ")
+    }
+
     /** Text of every ayah of a surah, in order. */
     fun ayahTexts(sura: Int): List<String> =
         db.rawQuery("SELECT text FROM ayah WHERE sura=? ORDER BY ayah", arrayOf("$sura")).use { c ->

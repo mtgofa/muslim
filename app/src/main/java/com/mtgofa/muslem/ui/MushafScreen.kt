@@ -86,6 +86,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
@@ -237,7 +239,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                         onTap = { selected = null; chrome = !chrome },
                         onLongPress = { a -> selected = a; sheet = "ayah" },
                     )
-                    PageBadge(p, Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp))
+                    PageFooter(p, Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp))
                 }
             }
         }
@@ -655,40 +657,55 @@ private fun ReciterSheet(currentSura: Int, onDismiss: () -> Unit) {
     }
 }
 
-/** Page number in a small tag that points to the page's outer edge (right on right-hand pages). */
+/**
+ * Foot of the page, as printed: the page side on the right (an open book with this page's half
+ * hatched), the page number in the middle, and the next page's first words on the left.
+ */
 @Composable
-private fun PageBadge(page: Int, modifier: Modifier) {
+private fun PageFooter(page: Int, modifier: Modifier) {
     val rightHand = page % 2 == 1
-    Box(modifier, contentAlignment = if (rightHand) androidx.compose.ui.AbsoluteAlignment.CenterRight else androidx.compose.ui.AbsoluteAlignment.CenterLeft) {
-        Box(Modifier.width(66.dp).height(24.dp)) {
-            var body by remember { mutableStateOf<android.graphics.RectF?>(null) }
-            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                drawIntoCanvas { c -> body = com.mtgofa.muslem.quran.Ornaments.pageBadge(c.nativeCanvas, size.width, size.height, rightHand) }
-            }
-            val density = androidx.compose.ui.platform.LocalDensity.current
-            body?.let { b ->
-                Box(
-                    Modifier
-                        .align(androidx.compose.ui.AbsoluteAlignment.TopLeft)
-                        .absolutePadding(left = with(density) { b.left.toDp() }, top = with(density) { b.top.toDp() })
-                        .size(with(density) { b.width().toDp() }, with(density) { b.height().toDp() }),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        arabicDigits(page), fontSize = 11.sp, fontFamily = Plex,
-                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                        color = Color(com.mtgofa.muslem.quran.Ornaments.BADGE_INK),
-                        style = androidx.compose.ui.text.TextStyle(
-                            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
-                            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
-                                androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
-                                androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
-                            ),
-                        ),
-                    )
-                }
+    val catchword = remember(page) { QuranDb.catchword(page) }
+    val ink = Color(0xFF175E43)
+    Box(modifier.height(26.dp)) {
+        PageSideIcon(rightHand, ink, Modifier.align(androidx.compose.ui.AbsoluteAlignment.CenterRight).size(30.dp, 20.dp))
+        Text(
+            arabicDigits(page), fontFamily = Plex, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            fontSize = 14.sp, color = ink, modifier = Modifier.align(Alignment.Center),
+        )
+        if (catchword.isNotEmpty()) Text(
+            catchword, fontFamily = Plex, fontSize = 13.sp, color = Color(0xFF6B5B3E), maxLines = 1,
+            modifier = Modifier.align(androidx.compose.ui.AbsoluteAlignment.CenterLeft),
+        )
+    }
+}
+
+/** An open book whose right or left page is hatched, telling which side of the spread this is. */
+@Composable
+private fun PageSideIcon(rightHand: Boolean, color: Color, modifier: Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val w = size.width; val h = size.height
+        val stroke = 1.4.dp.toPx()
+        val mid = w / 2
+        fun page(left: Boolean): androidx.compose.ui.graphics.Path = androidx.compose.ui.graphics.Path().apply {
+            // a page curving away from the spine
+            val outer = if (left) stroke else w - stroke
+            moveTo(mid, h * 0.18f)
+            quadraticBezierTo((mid + outer) / 2, h * 0.02f, outer, h * 0.12f)
+            lineTo(outer, h - stroke)
+            quadraticBezierTo((mid + outer) / 2, h * 0.86f, mid, h - stroke)
+            close()
+        }
+        val active = page(left = !rightHand)
+        // hatch the active page with diagonal lines
+        clipPath(active) {
+            var x = -h
+            while (x < w) {
+                drawLine(color.copy(alpha = 0.55f), Offset(x, h), Offset(x + h, 0f), strokeWidth = stroke * 0.8f)
+                x += 4.dp.toPx()
             }
         }
+        drawPath(page(true), color, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
+        drawPath(page(false), color, style = androidx.compose.ui.graphics.drawscope.Stroke(stroke))
     }
 }
 
