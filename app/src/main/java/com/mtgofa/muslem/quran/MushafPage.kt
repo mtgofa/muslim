@@ -47,6 +47,10 @@ class PageLayout(
 private const val LINES = 15
 /** Surah name and basmala sizes, as a fraction of the line height. */
 private const val TITLE_SIZE = 0.38f
+/** Extra stroke weight for the surah names, as a fraction of their size. */
+private const val TITLE_WEIGHT = 0.018f
+private val TITLE_SPREAD = listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f, 0f to 0f)
+
 /** Extra stroke weight for the page text, as a fraction of the text size. */
 private const val WEIGHT = 0.0025f
 /** Basmala width as a fraction of the page width. */
@@ -181,7 +185,9 @@ fun MushafPageView(
                 val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.headerSize; color = ink.toArgb() }
                 for (f in lay.frames) {
                     Ornaments.surahFrame(nc, f.rect)
-                    nc.drawText(f.title, f.titleX, f.baseline, tp)
+                    // the title font has a single weight: a small spread makes the name bolder
+                    val tw = lay.headerSize * TITLE_WEIGHT
+                    for ((dx, dy) in TITLE_SPREAD) nc.drawText(f.title, f.titleX + dx * tw, f.baseline + dy * tw, tp)
                 }
                 // ---- basmala
                 val bpaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.basmalaSize; color = ink.toArgb() }

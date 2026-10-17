@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -723,17 +724,30 @@ private fun TajweedSheet(onDismiss: () -> Unit) {
                     )
                 }
                 Spacer(Modifier.height(16.dp))
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(Palette.Paper, RoundedCornerShape(18.dp))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    TAJWEED_KEY.forEach { (color, label) ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(22.dp).background(Color(color), RoundedCornerShape(7.dp)))
-                            Spacer(Modifier.width(14.dp))
-                            Text(label, style = MaterialTheme.typography.bodyLarge, color = if (Settings.tajweed) Palette.Ink else Palette.Muted)
+                // two per row: each colour in its own lightly tinted card
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TAJWEED_KEY.chunked(2).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            pair.forEach { (color, label) ->
+                                val c = Color(color)
+                                Row(
+                                    Modifier
+                                        .weight(1f)
+                                        .height(58.dp)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(c.copy(alpha = if (Settings.tajweed) 0.09f else 0.04f))
+                                        .border(1.dp, c.copy(alpha = if (Settings.tajweed) 0.35f else 0.12f), RoundedCornerShape(14.dp))
+                                        .padding(horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Box(Modifier.size(14.dp).clip(CircleShape).background(if (Settings.tajweed) c else c.copy(alpha = 0.35f)))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(
+                                        label, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                        color = if (Settings.tajweed) Palette.Ink else Palette.Muted, maxLines = 2, lineHeight = 18.sp,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
