@@ -109,6 +109,7 @@ import java.time.LocalDate
 
 @Composable
 fun SettingsScreen(
+    onBack: () -> Unit,
     onLocation: () -> Unit,
     onMuezzin: () -> Unit,
     onPrayers: () -> Unit,
@@ -121,7 +122,7 @@ fun SettingsScreen(
     var picker by remember { mutableStateOf<String?>(null) }
     key(changes) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
-            TopBar("الإعدادات")
+            TopBar("الإعدادات", onBack)
             SectionTitle("مواقيت الصلاة")
             Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
                 SettingRow("الموقع", Settings.locationName + if (Settings.locationSource == "gps") " (تلقائي)" else "", Icons.Rounded.LocationOn, onLocation) { Chevron() }

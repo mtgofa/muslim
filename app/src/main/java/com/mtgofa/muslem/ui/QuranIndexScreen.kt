@@ -72,7 +72,7 @@ fun NumberOrnament(n: Int, color: Color = Palette.Gold) {
 }
 
 @Composable
-fun QuranIndexScreen(embedded: Boolean = false, onOpen: (page: Int, sura: Int?, ayah: Int?) -> Unit) {
+fun QuranIndexScreen(embedded: Boolean = false, onBack: (() -> Unit)? = null, onOpen: (page: Int, sura: Int?, ayah: Int?) -> Unit) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
@@ -84,7 +84,7 @@ fun QuranIndexScreen(embedded: Boolean = false, onOpen: (page: Int, sura: Int?, 
             IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
                 Icon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, "بحث")
             }
-        } else TopBar("القرآن الكريم") {
+        } else TopBar("القرآن الكريم", onBack) {
             IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
                 Icon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, "بحث")
             }

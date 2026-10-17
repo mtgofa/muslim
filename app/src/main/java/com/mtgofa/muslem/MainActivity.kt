@@ -99,6 +99,10 @@ sealed interface Route {
     data class Mushaf(val page: Int, val focus: AyahRef?) : Route
     data object Hisn : Route
     data object Qibla : Route
+    data object QuranIndex : Route
+    data object Tasbeeh : Route
+    data object AdhkarHome : Route
+    data object Settings : Route
     data class Adhkar(val id: Int) : Route
 }
 
@@ -146,7 +150,6 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
         }
     }
     val stack = remember { mutableStateListOf<Route>(Route.Tabs) }
-    var tab by remember { mutableStateOf(0) }
     var prayerSheet by remember { mutableStateOf<Prayer?>(null) }
     var onboarded by remember { mutableStateOf(Settings.onboarded) }
     fun push(r: Route) { stack.add(r) }
@@ -165,7 +168,6 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
     }
 
     BackHandler(stack.size > 1) { pop() }
-    BackHandler(stack.size == 1 && tab != 0) { tab = 0 }
 
     if (!dbReady) {
         Box(Modifier.fillMaxSize().background(Palette.Bg), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
@@ -184,30 +186,31 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
     AnimatedContent(stack.last(), transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "nav") { route ->
         Box(Modifier.fillMaxSize().background(Palette.Bg)) {
             when (route) {
-                Route.Tabs -> Tabs(
-                    tab, { tab = it },
-                    home = {
-                        HomeScreen(
-                            onLocation = { push(Route.Location) },
-                            onPrayer = { prayerSheet = it },
-                            onOpenQuran = { push(Route.Mushaf(it, null)) },
-                            onReliability = { push(Route.Reliability) },
-                            onQibla = { push(Route.Qibla) },
-                        )
-                    },
-                    quran = { QuranIndexScreen { page, s, a -> push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null)) } },
-                    tasbeeh = { TasbeehScreen() },
-                    adhkar = { AdhkarHomeScreen(onHisn = { push(Route.Hisn) }, onChapter = { push(Route.Adhkar(it)) }) },
-                    settings = {
-                        SettingsScreen(
-                            onLocation = { push(Route.Location) },
-                            onMuezzin = { push(Route.Muezzin) },
-                            onPrayers = { push(Route.Prayers) },
-                            onReliability = { push(Route.Reliability) },
-                            onReciters = { push(Route.Reciters) },
-                            onAbout = { push(Route.About) },
-                        )
-                    },
+                Route.Tabs -> HomeScreen(
+                    onLocation = { push(Route.Location) },
+                    onPrayer = { prayerSheet = it },
+                    onOpenQuran = { push(Route.Mushaf(it, null)) },
+                    onReliability = { push(Route.Reliability) },
+                    onQibla = { push(Route.Qibla) },
+                    onQuran = { push(Route.QuranIndex) },
+                    onAdhkar = { push(Route.AdhkarHome) },
+                    onTasbeeh = { push(Route.Tasbeeh) },
+                    onHisn = { push(Route.Hisn) },
+                    onSettings = { push(Route.Settings) },
+                )
+                Route.QuranIndex -> QuranIndexScreen(onBack = ::pop) { page, s, a ->
+                    push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null))
+                }
+                Route.Tasbeeh -> TasbeehScreen(::pop)
+                Route.AdhkarHome -> AdhkarHomeScreen(onBack = ::pop, onHisn = { push(Route.Hisn) }, onChapter = { push(Route.Adhkar(it)) })
+                Route.Settings -> SettingsScreen(
+                    onBack = ::pop,
+                    onLocation = { push(Route.Location) },
+                    onMuezzin = { push(Route.Muezzin) },
+                    onPrayers = { push(Route.Prayers) },
+                    onReliability = { push(Route.Reliability) },
+                    onReciters = { push(Route.Reciters) },
+                    onAbout = { push(Route.About) },
                 )
                 Route.Location -> LocationScreen(::pop)
                 Route.Muezzin -> MuezzinScreen(::pop)
@@ -236,30 +239,6 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
             confirmButton = { TextButton(onClick = { scope.launch { Updater.install(ctx, avail.rel) } }) { Text("تحديث الآن") } },
             dismissButton = { TextButton(onClick = { Updater.prompt.value = false }) { Text("لاحقاً") } },
         )
-    }
-}
-
-@Composable
-private fun Tabs(
-    tab: Int, onTab: (Int) -> Unit,
-    home: @Composable () -> Unit, quran: @Composable () -> Unit, tasbeeh: @Composable () -> Unit,
-    adhkar: @Composable () -> Unit, settings: @Composable () -> Unit,
-) {
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f)) {
-            when (tab) { 0 -> home(); 1 -> quran(); 2 -> tasbeeh(); 3 -> adhkar(); else -> settings() }
-        }
-        NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
-            val colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Palette.Emerald, selectedTextColor = Palette.Emerald, indicatorColor = Palette.EmeraldSoft,
-                unselectedIconColor = Palette.Muted, unselectedTextColor = Palette.Muted,
-            )
-            NavigationBarItem(tab == 0, { onTab(0) }, { Icon(Icons.Rounded.Mosque, null) }, label = { Text("الصلاة") }, colors = colors)
-            NavigationBarItem(tab == 1, { onTab(1) }, { Icon(Icons.Rounded.MenuBook, null) }, label = { Text("القرآن") }, colors = colors)
-            NavigationBarItem(tab == 2, { onTab(2) }, { Icon(painterResource(R.drawable.ic_tasbeeh), null) }, label = { Text("السبحة") }, colors = colors)
-            NavigationBarItem(tab == 3, { onTab(3) }, { Icon(Icons.Rounded.AutoStories, null) }, label = { Text("الأذكار") }, colors = colors)
-            NavigationBarItem(tab == 4, { onTab(4) }, { Icon(Icons.Rounded.SettingsIcon, null) }, label = { Text("الإعدادات") }, colors = colors)
-        }
     }
 }
 

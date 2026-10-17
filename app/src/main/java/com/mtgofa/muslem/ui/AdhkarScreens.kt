@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -87,39 +88,67 @@ private fun featuredIcon(id: Int): ImageVector = when (id) {
 }
 
 @Composable
-fun AdhkarHomeScreen(onHisn: () -> Unit, onChapter: (Int) -> Unit) {
+fun AdhkarHomeScreen(onBack: () -> Unit, onHisn: () -> Unit, onChapter: (Int) -> Unit) {
     val ctx = LocalContext.current
     val contentVersion by com.mtgofa.muslem.data.Content.version.collectAsState()
     val chapters = remember(contentVersion) { Adhkar.all(ctx) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { TopBar("الأذكار") }
+        item { TopBar("الأذكار", onBack) }
         item { HisnCard(chapters.size, onHisn) }
         item { SectionTitle("الأذكار اليومية") }
-        items(Adhkar.featured.chunked(2)) { pair ->
+        // the five main categories as large illustrated cards, the rest as smaller ones in pairs
+        val (big, small) = Adhkar.featured.partition { it.id in BIG_CARDS }
+        items(big, key = { "big${it.id}" }) { f ->
+            val n = chapters.firstOrNull { it.id == f.id }?.items?.size ?: 0
+            BigAdhkarCard(f.name, n, adhkarTheme(f.id)) { onChapter(f.id) }
+        }
+        items(small.chunked(2)) { pair ->
             Row(Modifier.padding(horizontal = 16.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 pair.forEach { f ->
                     val n = chapters.firstOrNull { it.id == f.id }?.items?.size ?: 0
-                    Row(
-                        Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(MaterialTheme.colorScheme.surface)
-                            .border(1.dp, Palette.Line, RoundedCornerShape(18.dp))
-                            .clickable { onChapter(f.id) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconBadge(featuredIcon(f.id), size = 38.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Column {
-                            Text(f.name, style = MaterialTheme.typography.titleSmall, maxLines = 2)
-                            Text("${arabicDigits(n)} ذكر", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
-                        }
-                    }
+                    SmallAdhkarCard(f.name, n, adhkarTheme(f.id), Modifier.weight(1f)) { onChapter(f.id) }
                 }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
+        }
+    }
+}
+
+private val BIG_CARDS = setOf(27, 25, 28, 1, 15)
+
+@Composable
+private fun BigAdhkarCard(name: String, count: Int, theme: AdhkarTheme, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .height(124.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(theme.bg)
+            .clickable(onClick = onClick),
+    ) {
+        // drawing on the left (RTL: the end), title on the right
+        AdhkarArt(theme, Modifier.align(androidx.compose.ui.AbsoluteAlignment.CenterLeft).fillMaxHeight().fillMaxWidth(0.62f))
+        Column(Modifier.align(androidx.compose.ui.AbsoluteAlignment.CenterRight).padding(horizontal = 22.dp)) {
+            Text(name, style = MaterialTheme.typography.headlineSmall, color = Palette.Ink)
+            Text("${arabicDigits(count)} ذكر", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+        }
+    }
+}
+
+@Composable
+private fun SmallAdhkarCard(name: String, count: Int, theme: AdhkarTheme, modifier: Modifier, onClick: () -> Unit) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(theme.bg)
+            .clickable(onClick = onClick),
+    ) {
+        AdhkarArt(theme, Modifier.fillMaxWidth().height(78.dp))
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text(name, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+            Text("${arabicDigits(count)} ذكر", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
         }
     }
 }

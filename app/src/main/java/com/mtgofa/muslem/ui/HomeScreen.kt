@@ -1,6 +1,10 @@
 package com.mtgofa.muslem.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.AutoStories
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -104,6 +108,11 @@ fun HomeScreen(
     onOpenQuran: (Int) -> Unit,
     onReliability: () -> Unit,
     onQibla: () -> Unit,
+    onQuran: () -> Unit,
+    onAdhkar: () -> Unit,
+    onTasbeeh: () -> Unit,
+    onHisn: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
@@ -175,78 +184,161 @@ fun HomeScreen(
             }
         }
         item {
-            Card(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), padding = PaddingValues(vertical = 6.dp)) {
-                Prayer.entries.forEachIndexed { i, p ->
-                    PrayerRow(p, times[p], isNext = p == next && nextAt.toLocalDate() == today, date = today, rev = changes) { onPrayer(p) }
-                    if (i < Prayer.entries.lastIndex) RowDivider()
-                }
-            }
-        }
-        item {
-            Card(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), onClick = onQibla) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconBadge(Icons.Rounded.Explore)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("اتجاه القبلة", style = MaterialTheme.typography.titleMedium)
-                        Text("بوصلة بسيطة تهتز وتتلوّن عند الاتجاه الصحيح", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+            // the six times side by side; tap one for its settings
+            Card(Modifier.padding(horizontal = 8.dp, vertical = 6.dp), padding = PaddingValues(horizontal = 2.dp, vertical = 12.dp)) {
+                Row {
+                    Prayer.entries.forEach { p ->
+                        PrayerColumn(
+                            p, times[p], isNext = p == next && nextAt.toLocalDate() == today, date = today, rev = changes,
+                            modifier = Modifier.weight(1f),
+                        ) { onPrayer(p) }
                     }
-                    Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
+                }
+                Spacer(Modifier.height(12.dp))
+                val night = remember(today, changes) { nightMarks(today) }
+                Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NightChip("منتصف الليل", night.first, Modifier.weight(1f))
+                    NightChip("الثلث الأخير", night.second, Modifier.weight(1f))
                 }
             }
         }
         item {
             val page = Settings.lastPage
             val sura = remember(page) { runCatching { QuranDb.page(page).suras.firstOrNull()?.let { QuranDb.surah(it).name } }.getOrNull() }
-            Card(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), onClick = { onOpenQuran(page) }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconBadge(Icons.Rounded.MenuBook, tint = Color(0xFF8A5E14), bg = Palette.GoldSoft)
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("متابعة القراءة", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            (sura?.let { "سورة $it · " } ?: "") + "صفحة ${arabicDigits(page)}",
-                            style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
-                        )
+            ContinueReading(sura, page) { onOpenQuran(page) }
+        }
+        // everything else as square tiles, three per row (this replaces the bottom bar)
+        item {
+            val tiles = listOf(
+                Tile("القرآن الكريم", Icons.Rounded.MenuBook, Color(0xFF0F7A62), Color(0xFFE3F2EC), onQuran),
+                Tile("الأذكار", Icons.Rounded.AutoStories, Color(0xFF6A55B5), Color(0xFFEEE8FF), onAdhkar),
+                Tile("السبحة", null, Color(0xFFB8893A), Color(0xFFFFF3E0), onTasbeeh),
+                Tile("القبلة", Icons.Rounded.Explore, Color(0xFF2B7FC1), Color(0xFFE3F0FB), onQibla),
+                Tile("حصن المسلم", Icons.Rounded.Shield, Color(0xFF1F7A5A), Color(0xFFE6F4EF), onHisn),
+                Tile("الإعدادات", Icons.Rounded.Settings, Color(0xFF5E6A64), Color(0xFFEFF1EE), onSettings),
+            )
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                tiles.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { t -> TileView(t, Modifier.weight(1f)) }
                     }
-                    Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
                 }
             }
         }
     }
 }
 
+private class Tile(val title: String, val icon: ImageVector?, val tint: Color, val bg: Color, val onClick: () -> Unit)
+
 @Composable
-@Suppress("UNUSED_PARAMETER") // rev: re-read settings after edits
-private fun PrayerRow(p: Prayer, t: ZonedDateTime, isNext: Boolean, date: LocalDate, rev: Int, onClick: () -> Unit) {
-    val mode = Settings.mode(p)
+private fun TileView(t: Tile, modifier: Modifier) {
+    Column(
+        modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(22.dp))
+            .background(t.bg)
+            .clickable(onClick = t.onClick)
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(Modifier.size(52.dp).background(Color.White, CircleShape), contentAlignment = Alignment.Center) {
+            if (t.icon != null) Icon(t.icon, null, tint = t.tint, modifier = Modifier.size(28.dp))
+            else Icon(androidx.compose.ui.res.painterResource(com.mtgofa.muslem.R.drawable.ic_tasbeeh), null, tint = t.tint, modifier = Modifier.size(28.dp))
+        }
+        Spacer(Modifier.height(10.dp))
+        Text(t.title, style = MaterialTheme.typography.titleSmall, color = Palette.Ink, maxLines = 1)
+    }
+}
+
+@Composable
+private fun ContinueReading(sura: String?, page: Int, onClick: () -> Unit) {
     Row(
         Modifier
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF14936F), Color(0xFF0A5A48))))
             .clickable(onClick = onClick)
-            .background(if (isNext) Palette.EmeraldSoft else Color.Transparent)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconBadge(prayerIcon(p), tint = if (isNext) Color.White else Palette.Emerald, bg = if (isNext) Palette.Emerald else Palette.EmeraldSoft, size = 38.dp)
+        Box(Modifier.size(48.dp).background(Color(0x33FFFFFF), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.MenuBook, null, tint = Color.White, modifier = Modifier.size(26.dp))
+        }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(p.label(date), style = MaterialTheme.typography.titleMedium, color = if (isNext) Palette.EmeraldDark else Palette.Ink)
-            val extra = buildList {
-                val pre = Settings.preAlert(p); if (pre > 0) add("تنبيه قبلها ${arabicDigits(pre)} د")
-                val iq = Settings.iqama(p); if (iq > 0 && p.hasAdhan) add("الإقامة بعد ${arabicDigits(iq)} د")
-            }
-            if (extra.isNotEmpty()) Text(extra.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+            Text("متابعة القراءة", style = MaterialTheme.typography.labelLarge, color = Color(0xD9FFFFFF))
+            Text(sura?.let { "سورة $it" } ?: "القرآن الكريم", style = MaterialTheme.typography.headlineSmall, color = Color.White)
+            Text("صفحة ${arabicDigits(page)} · الجزء ${JUZ_NAMES[QuranDb.juzOfPage(page) - 1]}", style = MaterialTheme.typography.bodySmall, color = Color(0xFFF2D59B))
         }
-        Text(clock(t), style = MaterialTheme.typography.titleLarge, color = if (isNext) Palette.EmeraldDark else Palette.Ink)
-        Spacer(Modifier.width(4.dp))
-        Text(ampm(t), style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
-        Spacer(Modifier.width(12.dp))
-        Icon(
-            when (mode) { AlertMode.ADHAN -> Icons.Rounded.VolumeUp; AlertMode.NOTIFY -> Icons.Rounded.NotificationsActive; AlertMode.SILENT -> Icons.Rounded.NotificationsOff },
-            mode.ar,
-            tint = if (mode == AlertMode.SILENT) Palette.Muted.copy(alpha = 0.5f) else Palette.Gold,
-            modifier = Modifier.size(20.dp),
-        )
+        Icon(Icons.Rounded.ChevronLeft, null, tint = Color.White)
     }
+}
+
+/** Colour of each prayer's icon. */
+private fun prayerTint(p: Prayer): Color = when (p) {
+    Prayer.FAJR -> Color(0xFF2F8FC4)
+    Prayer.SUNRISE -> Color(0xFFF08A3C)
+    Prayer.DHUHR -> Color(0xFFF2B705)
+    Prayer.ASR -> Color(0xFF9A86D9)
+    Prayer.MAGHRIB -> Color(0xFFF07B3C)
+    Prayer.ISHA -> Color(0xFF2C3E8C)
+}
+
+@Composable
+@Suppress("UNUSED_PARAMETER") // rev: re-read settings after edits
+private fun PrayerColumn(p: Prayer, t: ZonedDateTime, isNext: Boolean, date: LocalDate, rev: Int, modifier: Modifier, onClick: () -> Unit) {
+    val mode = Settings.mode(p)
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (isNext) Palette.EmeraldSoft else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            p.label(date), style = MaterialTheme.typography.titleSmall, maxLines = 1,
+            color = if (isNext) Palette.EmeraldDark else Palette.Ink,
+        )
+        Spacer(Modifier.height(6.dp))
+        Box(
+            Modifier
+                .size(48.dp)
+                .background(if (isNext) Color.White else prayerTint(p).copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) { Icon(prayerIcon(p), null, tint = prayerTint(p), modifier = Modifier.size(28.dp)) }
+        Spacer(Modifier.height(6.dp))
+        Text(clock(t), fontSize = 19.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = if (isNext) Palette.EmeraldDark else Palette.Ink, maxLines = 1)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(ampm(t), style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+            if (mode == AlertMode.SILENT) {
+                Spacer(Modifier.width(3.dp))
+                Icon(Icons.Rounded.NotificationsOff, mode.ar, tint = Palette.Muted.copy(alpha = 0.6f), modifier = Modifier.size(11.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun NightChip(label: String, t: ZonedDateTime, modifier: Modifier) {
+    Row(
+        modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Text("$label: ", style = MaterialTheme.typography.labelLarge)
+        Text("${clock(t)} ${ampm(t)}", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2F8FC4))
+    }
+}
+
+/** Middle and start of the last third of the night (Maghrib to the next Fajr). */
+private fun nightMarks(today: LocalDate): Pair<ZonedDateTime, ZonedDateTime> {
+    val maghrib = Scheduler.times(today)[Prayer.MAGHRIB]
+    val fajr = Scheduler.times(today.plusDays(1))[Prayer.FAJR]
+    val night = Duration.between(maghrib, fajr)
+    return maghrib.plus(night.dividedBy(2)) to maghrib.plus(night.multipliedBy(2).dividedBy(3))
 }
