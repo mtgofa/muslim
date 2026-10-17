@@ -47,16 +47,19 @@
             android:launchMode="singleInstance"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
-            android:taskAffinity=".adhan" />
+            android:taskAffinity=".adhan"
+            android:directBootAware="true" />
 
         <service
             android:name=".prayer.AdhanService"
             android:exported="false"
+            android:directBootAware="true"
             android:foregroundServiceType="mediaPlayback" />
 
         <service
             android:name=".prayer.KeepAliveService"
             android:exported="false"
+            android:directBootAware="true"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -73,12 +76,13 @@
             </intent-filter>
         </service>
 
-        <receiver android:name=".prayer.AlarmReceiver" android:exported="false" />
+        <receiver android:name=".prayer.AlarmReceiver" android:exported="false" android:directBootAware="true" />
         <receiver android:name=".data.WirdReceiver" android:exported="false" />
         <receiver android:name=".data.FastingReceiver" android:exported="false" />
 
-        <receiver android:name=".prayer.BootReceiver" android:exported="true">
+        <receiver android:name=".prayer.BootReceiver" android:exported="true" android:directBootAware="true">
             <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />

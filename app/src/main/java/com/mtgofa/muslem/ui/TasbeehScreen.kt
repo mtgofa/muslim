@@ -4,8 +4,6 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Build
 import android.os.VibrationEffect
-import android.os.Vibrator
-import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.runtime.mutableFloatStateOf
@@ -64,7 +62,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -81,7 +78,6 @@ private const val BEADS = 33
 @Composable
 fun TasbeehScreen(onBack: (() -> Unit)? = null) {
     val ctx = LocalContext.current
-    val view = LocalView.current
     val changes by Settings.changes.collectAsState()
     var phraseId by remember { mutableStateOf(Settings.tasbeehPhrase) }
     val phrase = Tasbeeh.byId(phraseId)
@@ -91,7 +87,6 @@ fun TasbeehScreen(onBack: (() -> Unit)? = null) {
     var style by remember { mutableIntStateOf(Settings.tasbeehStyle) }
     val tone = remember { runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull() }
     DisposableEffect(Unit) { onDispose { tone?.release() } }
-    val vibrator = remember { ctx.getSystemService(Vibrator::class.java) }
 
     val target = phrase.target
     // free counting shows a ring of 100
@@ -108,7 +103,7 @@ fun TasbeehScreen(onBack: (() -> Unit)? = null) {
         if (Settings.tasbeehVibrate) {
             if (roundDone || hundred) {
                 com.mtgofa.muslem.data.Haptics.buzz(ctx, 220)
-            } else view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            } else com.mtgofa.muslem.data.Haptics.tick(ctx)
         }
         when (Settings.tasbeehSound) {
             1 -> if (roundDone || (target == 0 && hundred)) tone?.startTone(ToneGenerator.TONE_PROP_ACK, 250)

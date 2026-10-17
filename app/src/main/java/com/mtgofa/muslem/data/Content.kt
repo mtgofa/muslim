@@ -6,7 +6,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import okhttp3.Request
 import org.json.JSONArray
 import java.io.File
 
@@ -59,16 +58,14 @@ object Content {
         var changed = false
         for (name in FILES) {
             runCatching {
-                val req = Request.Builder().url(url(name)).header("User-Agent", "Muslem-Android")
-                    .apply { p.getString("etag_$name", null)?.let { header("If-None-Match", it) } }
-                    .build()
-                Http.client.newCall(req).execute().use { resp ->
-                    if (resp.code != 200) return@use
-                    val body = resp.body?.string().orEmpty()
+                val resp = Http.get(url(name), p.getString("etag_$name", null)?.let { mapOf("If-None-Match" to it) } ?: emptyMap())
+                run {
+                    if (resp.code != 200) return@run
+                    val body = resp.body
                     // never replace content with an empty or broken file
                     val trimmed = body.trimStart()
                     val size = if (trimmed.startsWith("{")) org.json.JSONObject(body).length() else JSONArray(body).length()
-                    if (size == 0) return@use
+                    if (size == 0) return@run
                     dir().mkdirs()
                     val tmp = File(dir(), "$name.tmp")
                     tmp.writeText(body)

@@ -33,7 +33,7 @@ object Muezzins {
 
     fun byId(id: String) = all.firstOrNull { it.id == id } ?: all.first()
 
-    private fun localFile(ctx: Context, m: Muezzin) = File(File(ctx.filesDir, "adhan"), "${m.id}.mp3")
+    private fun localFile(ctx: Context, m: Muezzin) = File(File(com.mtgofa.muslem.data.Storage.dp(ctx).filesDir, "adhan"), "${m.id}.mp3")
 
     fun isAvailable(ctx: Context, m: Muezzin) = m.bundled || localFile(ctx, m).length() > 50_000
 

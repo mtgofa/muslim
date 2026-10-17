@@ -19,6 +19,12 @@ object Haptics {
 
     fun buzz(ctx: Context, ms: Long = 60) = play(ctx, VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
 
+    /** A barely-there tick for each tasbeeh tap: short and soft, but never muted like touch feedback. */
+    fun tick(ctx: Context) {
+        val v = vibrator(ctx)?.takeIf { it.hasVibrator() } ?: return
+        play(ctx, VibrationEffect.createOneShot(22, if (v.hasAmplitudeControl()) 90 else VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
     fun pattern(ctx: Context, vararg timings: Long) = play(ctx, VibrationEffect.createWaveform(timings, -1))
 
     private fun play(ctx: Context, effect: VibrationEffect) {

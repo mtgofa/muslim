@@ -190,6 +190,8 @@ fun QiblaScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val qibla = remember { qiblaBearing(Settings.lat, Settings.lng) }
     val compass = rememberCompass()
+    // some budget phones have no magnetometer: show the Qibla against north and say so
+    val noCompass = remember { (ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager).getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) == null }
     val heading = compass.heading
     val accuracy = compass.accuracy
     // low only once the sensor has said so; some phones never report accuracy at all
@@ -209,6 +211,7 @@ fun QiblaScreen(onBack: () -> Unit) {
     val liveCircle by androidx.compose.runtime.rememberUpdatedState(compass.circleDone)
     val recent = remember { ArrayDeque<Float>() }
     LaunchedEffect(Unit) {
+        if (noCompass) { settled = true; return@LaunchedEffect }
         val start = System.currentTimeMillis()
         while (!settled) {
             kotlinx.coroutines.delay(250)
@@ -244,6 +247,7 @@ fun QiblaScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(
             when {
+                noCompass -> "هاتفك لا يحتوي على بوصلة"
                 heading == null || !settled -> "لحظات… جاري ضبط البوصلة"
                 aligned -> "أنت في اتجاه القبلة"
                 rel!! > 0 -> "أدر الهاتف يميناً"
@@ -346,7 +350,13 @@ fun QiblaScreen(onBack: () -> Unit) {
             }
         }
         Spacer(Modifier.height(20.dp))
-        if (!settled) {
+        if (noCompass) {
+            Text(
+                "وجّه أعلى الهاتف نحو الشمال، والسهم الذهبي يشير إلى القبلة",
+                style = MaterialTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            )
+        } else if (!settled) {
             Text(
                 if (askCircle) "ضع الهاتف مسطّحاً ولفّه دورة كاملة ببطء" else "جاري التأكد من الاتجاه…",
                 style = MaterialTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center,

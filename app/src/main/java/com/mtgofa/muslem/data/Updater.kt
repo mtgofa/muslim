@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
-import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -48,16 +47,15 @@ object Updater {
     }
 
     private fun fetch(): State = try {
-        val req = Request.Builder()
-            .url("https://api.github.com/repos/${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/releases/latest")
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "Muslem-Android")
-            .build()
-        Http.client.newCall(req).execute().use { resp ->
+        val resp = Http.get(
+            "https://api.github.com/repos/${BuildConfig.GITHUB_OWNER}/${BuildConfig.GITHUB_REPO}/releases/latest",
+            mapOf("Accept" to "application/vnd.github+json"),
+        )
+        run {
             when {
                 resp.code == 404 -> State.UpToDate
                 !resp.isSuccessful -> State.Failed("HTTP ${resp.code}")
-                else -> parse(resp.body?.string().orEmpty())
+                else -> parse(resp.body)
             }
         }
     } catch (e: Exception) {

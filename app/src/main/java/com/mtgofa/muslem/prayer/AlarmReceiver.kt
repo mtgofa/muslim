@@ -35,6 +35,10 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Settings.init(ctx)
         Scheduler.schedule(ctx)
+        // wird and fasting reminders keep their data in credential storage: wait for the unlock
+        // (BOOT_COMPLETED follows LOCKED_BOOT_COMPLETED once the user unlocks)
+        if (!com.mtgofa.muslem.data.Storage.unlocked(ctx)) return
+        com.mtgofa.muslem.data.Storage.migrate(ctx)
         com.mtgofa.muslem.data.Wird.schedule(ctx)
         com.mtgofa.muslem.data.Fasting.schedule(ctx)
     }

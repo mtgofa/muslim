@@ -21,7 +21,10 @@ object Settings {
 
     fun init(ctx: Context) {
         if (::sp.isInitialized) return
-        sp = ctx.applicationContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        // device-protected so alarms can be re-armed and the adhan played before the first unlock
+        val dp = Storage.dp(ctx)
+        if (Storage.unlocked(ctx)) dp.moveSharedPreferencesFrom(ctx.applicationContext, "settings")
+        sp = dp.getSharedPreferences("settings", Context.MODE_PRIVATE)
         Hijri.adjustDays = hijriAdjust
     }
 

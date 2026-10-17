@@ -13,9 +13,15 @@ class MuslemApp : Application() {
         super.onCreate()
         Settings.init(this)
         com.mtgofa.muslem.data.Content.init(this)
+        createChannels()
+        // before the first unlock after a reboot only the adhan chain can run (see Storage)
+        if (!com.mtgofa.muslem.data.Storage.unlocked(this)) {
+            Scheduler.schedule(this)
+            return
+        }
+        com.mtgofa.muslem.data.Storage.migrate(this)
         com.mtgofa.muslem.data.Wird.init(this)
         com.mtgofa.muslem.data.Fasting.init(this)
-        createChannels()
         thread(name = "quran-db") { QuranDb.init(this) }
         Scheduler.schedule(this)
         com.mtgofa.muslem.data.Wird.schedule(this)
