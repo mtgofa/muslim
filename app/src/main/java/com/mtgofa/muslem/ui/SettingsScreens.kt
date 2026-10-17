@@ -77,6 +77,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
@@ -483,8 +484,22 @@ fun ReliabilityScreen(onBack: () -> Unit) {
 @Composable
 private fun CheckRow(title: String, sub: String, ok: Boolean, fix: () -> Unit) {
     SettingRow(title, sub, if (ok) Icons.Rounded.CheckCircle else Icons.Rounded.WarningAmber, if (ok) null else fix) {
-        if (ok) Text("مفعّل", color = Palette.Emerald, style = MaterialTheme.typography.labelLarge)
-        else TextButton(onClick = fix) { Text("تفعيل") }
+        // same-width pill either way, so the status column lines up
+        Box(
+            Modifier
+                .width(84.dp)
+                .clip(RoundedCornerShape(50))
+                .background(if (ok) Palette.EmeraldSoft else Palette.Emerald)
+                .then(if (ok) Modifier else Modifier.clickable(onClick = fix))
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                if (ok) "مفعّل" else "تفعيل",
+                color = if (ok) Palette.EmeraldDark else Color.White,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
     }
 }
 
