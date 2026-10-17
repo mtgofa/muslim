@@ -1,165 +1,298 @@
 package com.mtgofa.muslem.quran
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.util.LruCache
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 
 /** Colours of the hand-drawn Mushaf ornaments, for the light and the night page. */
-class OrnamentColors(night: Boolean) {
-    val band = if (night) 0xFF2C5A36.toInt() else 0xFF4E9F5D.toInt()
-    val bandDark = if (night) 0xFF1B3B22.toInt() else 0xFF2F7039.toInt()
-    val bandLight = if (night) 0xFF4E7F58.toInt() else 0xFFCFE6CC.toInt()
-    val vine = if (night) 0xFFB9D8BC.toInt() else 0xFFFFFFFF.toInt()
-    val petal = if (night) 0xFFC07A98.toInt() else 0xFFEBA3C1.toInt()
-    val petalEdge = if (night) 0xFF8E4466.toInt() else 0xFFC4517F.toInt()
-    val leaf = if (night) 0xFF7FB487.toInt() else 0xFFBFE0B6.toInt()
-    val cartouche = if (night) 0xFF1D2324.toInt() else 0xFFFFFDF6.toInt()
+class OrnamentColors(val night: Boolean) {
+    val border = if (night) 0xFF183A20.toInt() else 0xFF246B30.toInt()
+    val stripe = if (night) 0xFF3F6E47.toInt() else 0xFFA6D29C.toInt()
+    val field = if (night) 0xFF2A5E33.toInt() else 0xFF3E9849.toInt()
+    val scroll = if (night) 0xFFC9E2CC.toInt() else 0xFFFFFFFF.toInt()
+    val leafFill = if (night) 0xFF4F8A59.toInt() else 0xFF8CCB84.toInt()
+    val petal = if (night) 0xFFC77E9E.toInt() else 0xFFEE8FB7.toInt()
+    val petalLight = if (night) 0xFFE0B1C5.toInt() else 0xFFF9CFE0.toInt()
+    val petalEdge = if (night) 0xFF8E4466.toInt() else 0xFFC23F78.toInt()
+    val roundel = if (night) 0xFF5D8F63.toInt() else 0xFFD5ECCD.toInt()
+    val cartouche = if (night) 0xFF1D2324.toInt() else 0xFFFFFFFF.toInt()
+    val box = if (night) 0xFF2B3A2E.toInt() else 0xFFDCEDD6.toInt()
+    val boxEdge = if (night) 0xFF5E9B67.toInt() else 0xFF4AA157.toInt()
 }
 
+/**
+ * Arabesque ornaments for the Mushaf page, drawn with paths (no artwork shipped) and cached as
+ * bitmaps per size, since they appear on every page.
+ */
 object Ornaments {
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
+    }
+    private val cache = LruCache<String, Bitmap>(8)
 
-    /**
-     * Surah title band: a green arabesque strip with a rosette on each side and a pale
-     * cartouche in the middle that holds the surah name. Returns the cartouche bounds.
-     */
-    fun surahFrame(c: Canvas, r: RectF, col: OrnamentColors): RectF {
-        val h = r.height()
-        // band + double border
-        fill.color = col.band
-        c.drawRect(r, fill)
-        stroke.color = col.bandDark; stroke.strokeWidth = h * 0.035f
-        c.drawRect(r, stroke)
-        stroke.color = col.bandLight; stroke.strokeWidth = h * 0.02f
-        val inner = RectF(r.left + h * 0.08f, r.top + h * 0.08f, r.right - h * 0.08f, r.bottom - h * 0.08f)
-        c.drawRect(inner, stroke)
+    // ============================================================== surah title band
 
-        // cartouche
-        val cw = r.width() * 0.46f
-        val cx = r.centerX(); val cy = r.centerY()
-        val box = RectF(cx - cw / 2, r.top + h * 0.12f, cx + cw / 2, r.bottom - h * 0.12f)
-        val k = box.height() * 0.62f
-        val p = Path().apply {
-            moveTo(box.left - k * 0.15f, cy)
-            cubicTo(box.left, cy - box.height() * 0.1f, box.left + k * 0.2f, box.top, box.left + k, box.top)
-            lineTo(box.right - k, box.top)
-            cubicTo(box.right - k * 0.2f, box.top, box.right, cy - box.height() * 0.1f, box.right + k * 0.15f, cy)
-            cubicTo(box.right, cy + box.height() * 0.1f, box.right - k * 0.2f, box.bottom, box.right - k, box.bottom)
-            lineTo(box.left + k, box.bottom)
-            cubicTo(box.left + k * 0.2f, box.bottom, box.left, cy + box.height() * 0.1f, box.left - k * 0.15f, cy)
+    /** Draw the band into [r] on [c]; the surah name is drawn on top by the caller. */
+    @Synchronized
+    fun surahFrame(c: Canvas, r: RectF, col: OrnamentColors) {
+        val w = r.width().toInt().coerceAtLeast(1); val h = r.height().toInt().coerceAtLeast(1)
+        val key = "band:$w:$h:${col.night}"
+        val bmp = cache.get(key) ?: Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).also {
+            drawBand(Canvas(it), w.toFloat(), h.toFloat(), col)
+            cache.put(key, it)
+        }
+        c.drawBitmap(bmp, r.left, r.top, null)
+    }
+
+    private fun drawBand(c: Canvas, w: Float, h: Float, col: OrnamentColors) {
+        val cy = h / 2
+        // frame: dark border, light stripe, dark rule, green field
+        fill.color = col.border; c.drawRect(0f, 0f, w, h, fill)
+        val s1 = h * 0.045f
+        fill.color = col.stripe; c.drawRect(s1, s1, w - s1, h - s1, fill)
+        val s2 = h * 0.085f
+        fill.color = col.border; c.drawRect(s2, s2, w - s2, h - s2, fill)
+        val s3 = h * 0.1f
+        fill.color = col.field; c.drawRect(s3, s3, w - s3, h - s3, fill)
+        val top = s3; val bot = h - s3
+
+        val cw = w * 0.44f
+        val cl = (w - cw) / 2; val cr = cl + cw
+        val tip = h * 0.34f
+
+        // the two side panels first, the cartouche on top
+        panel(c, s3, cl - tip * 0.5f, top, bot, h, col)
+        panel(c, cr + tip * 0.5f, w - s3, top, bot, h, col)
+
+        val ct = top + h * 0.05f; val cb = bot - h * 0.05f
+        fill.color = col.border; c.drawPath(cartouchePath(cl, cr, ct, cb, cy, tip, h * 0.085f), fill)
+        fill.color = col.scroll; c.drawPath(cartouchePath(cl, cr, ct, cb, cy, tip, h * 0.06f), fill)
+        val cart = cartouchePath(cl, cr, ct, cb, cy, tip, 0f)
+        fill.color = col.cartouche; c.drawPath(cart, fill)
+        stroke.color = col.border; stroke.strokeWidth = h * 0.03f; c.drawPath(cart, stroke)
+        stroke.color = col.stripe; stroke.strokeWidth = h * 0.012f
+        c.drawPath(cartouchePath(cl, cr, ct, cb, cy, tip, -h * 0.06f), stroke)
+
+        // buds pointing at the cartouche tips
+        bud(c, cl - tip - h * 0.2f, cy, h * 0.075f, 90f, col)
+        bud(c, cr + tip + h * 0.2f, cy, h * 0.075f, -90f, col)
+    }
+
+    /** Cartouche: flat top and bottom with ogee ends that meet at a point. */
+    private fun cartouchePath(l: Float, r: Float, t: Float, b: Float, cy: Float, tip: Float, grow: Float): Path {
+        val L = l - grow; val R = r + grow; val T = t - grow; val B = b + grow; val tp = tip + grow * 0.5f
+        val notch = (B - T) * 0.22f
+        return Path().apply {
+            moveTo(L + notch, T)
+            lineTo(R - notch, T)
+            quadTo(R - notch * 0.2f, T, R, T + notch * 0.6f)
+            cubicTo(R + tp * 0.25f, cy - (B - T) * 0.18f, R + tp * 0.6f, cy - (B - T) * 0.05f, R + tp, cy)
+            cubicTo(R + tp * 0.6f, cy + (B - T) * 0.05f, R + tp * 0.25f, cy + (B - T) * 0.18f, R, B - notch * 0.6f)
+            quadTo(R - notch * 0.2f, B, R - notch, B)
+            lineTo(L + notch, B)
+            quadTo(L + notch * 0.2f, B, L, B - notch * 0.6f)
+            cubicTo(L - tp * 0.25f, cy + (B - T) * 0.18f, L - tp * 0.6f, cy + (B - T) * 0.05f, L - tp, cy)
+            cubicTo(L - tp * 0.6f, cy - (B - T) * 0.05f, L - tp * 0.25f, cy - (B - T) * 0.18f, L, T + notch * 0.6f)
+            quadTo(L + notch * 0.2f, T, L + notch, T)
             close()
         }
-        fill.color = col.cartouche
-        c.drawPath(p, fill)
-        stroke.color = col.bandDark; stroke.strokeWidth = h * 0.03f
-        c.drawPath(p, stroke)
+    }
 
-        // vines, buds and rosettes on both sides
-        val sides = listOf(r.left + h * 0.1f to box.left - k * 0.15f, box.right + k * 0.15f to r.right - h * 0.1f)
-        for ((a, b) in sides) {
-            val mx = (a + b) / 2
-            vines(c, a, b, cy, h, col)
-            // four leaves framing the rosette, then the rosette itself
-            for ((dx, dy) in listOf(-1 to -1, 1 to -1, -1 to 1, 1 to 1)) {
-                c.save()
-                val lx = mx + dx * h * 0.36f; val ly = cy + dy * h * 0.2f
-                c.rotate(dx * dy * 35f, lx, ly)
-                leaf(c, lx, ly, h * 0.11f, col)
-                c.restore()
+    /** One side panel: interlaced white scrolls with curls, leaves, buds and a central roundel. */
+    private fun panel(c: Canvas, a: Float, b: Float, top: Float, bot: Float, h: Float, col: OrnamentColors) {
+        val cy = (top + bot) / 2
+        val mid = (a + b) / 2
+        val rr = h * 0.33f
+        val amp = (bot - top) * 0.3f
+        c.save()
+        c.clipRect(a, top, b, bot)
+        // two interlaced vines (sine and inverted sine) running across the panel
+        for (sign in intArrayOf(1, -1)) {
+            val vine = Path()
+            val steps = 80
+            for (i in 0..steps) {
+                val t = i / steps.toFloat()
+                val x = a + (b - a) * t
+                val y = cy + sign * amp * sin(t * 2 * PI * 2).toFloat()
+                if (i == 0) vine.moveTo(x, y) else vine.lineTo(x, y)
             }
-            rosette(c, mx, cy, h * 0.33f, col)
+            stroke.color = col.border; stroke.strokeWidth = h * 0.06f; c.drawPath(vine, stroke)
+            stroke.color = col.scroll; stroke.strokeWidth = h * 0.032f; c.drawPath(vine, stroke)
         }
-        // pink buds at the cartouche tips
-        bud(c, box.left - k * 0.15f - h * 0.08f, cy, h * 0.07f, col)
-        bud(c, box.right + k * 0.15f + h * 0.08f, cy, h * 0.07f, col)
-        return box
-    }
-
-    private fun vines(c: Canvas, a: Float, b: Float, cy: Float, h: Float, col: OrnamentColors) {
-        stroke.color = col.vine; stroke.strokeWidth = h * 0.034f
-        val w = b - a
-        val amp = h * 0.26f
-        // two mirrored S-scrolls across the panel
-        for (dir in intArrayOf(-1, 1)) {
-            val path = Path().apply {
-                moveTo(a + w * 0.04f, cy)
-                cubicTo(a + w * 0.15f, cy + dir * amp * 1.2f, a + w * 0.3f, cy + dir * amp * 1.2f, a + w * 0.36f, cy + dir * amp * 0.35f)
-                moveTo(b - w * 0.04f, cy)
-                cubicTo(b - w * 0.15f, cy + dir * amp * 1.2f, b - w * 0.3f, cy + dir * amp * 1.2f, b - w * 0.36f, cy + dir * amp * 0.35f)
-            }
-            c.drawPath(path, stroke)
-            // small curls at the ends of the scrolls
-            for (x in floatArrayOf(a + w * 0.2f, b - w * 0.2f)) {
-                c.drawCircle(x, cy + dir * amp * 0.95f, h * 0.05f, stroke)
-            }
-            // leaves
-            for (x in floatArrayOf(a + w * 0.11f, b - w * 0.11f)) leaf(c, x, cy + dir * amp * 0.75f, h * 0.09f, col)
+        // curls, leaves and buds at the crests and troughs
+        for (k in 0 until 4) {
+            val x = a + (b - a) * (k * 0.25f + 0.125f)
+            val up = k % 2 == 0
+            if (abs(x - mid) < rr * 1.25f) continue
+            val y = cy + (if (up) -1 else 1) * amp
+            curl(c, x, y + (if (up) h * 0.13f else -h * 0.13f), h * 0.1f, up, col, h)
+            curl(c, x, y, h * 0.06f, !up, col, h)
+            leaf(c, x + (b - a) * 0.07f, cy, h * 0.12f, if (up) -40f else 40f, col, h)
+            leaf(c, x - (b - a) * 0.07f, cy, h * 0.12f, if (up) 40f else -40f, col, h)
+            bud(c, x, if (up) bot - h * 0.09f else top + h * 0.09f, h * 0.05f, if (up) 180f else 0f, col)
         }
-        for (x in floatArrayOf(a + w * 0.04f, b - w * 0.04f)) bud(c, x, cy, h * 0.055f, col)
+        // roundel with a flower
+        fill.color = col.border; c.drawCircle(mid, cy, rr * 1.12f, fill)
+        fill.color = col.roundel; c.drawCircle(mid, cy, rr * 1.04f, fill)
+        stroke.color = col.scroll; stroke.strokeWidth = h * 0.02f; c.drawCircle(mid, cy, rr * 0.98f, stroke)
+        flower(c, mid, cy, rr * 0.9f, col)
+        c.restore()
     }
 
-    private fun leaf(c: Canvas, x: Float, y: Float, s: Float, col: OrnamentColors) {
-        fill.color = col.leaf
-        c.drawOval(RectF(x - s, y - s * 0.55f, x + s, y + s * 0.55f), fill)
+    /** A spiral tendril. */
+    private fun curl(c: Canvas, x: Float, y: Float, r: Float, clockwise: Boolean, col: OrnamentColors, h: Float) {
+        val p = spiral(x, y, r, clockwise, 1.6)
+        stroke.color = col.border; stroke.strokeWidth = h * 0.05f; c.drawPath(p, stroke)
+        stroke.color = col.scroll; stroke.strokeWidth = h * 0.026f; c.drawPath(p, stroke)
     }
 
-    private fun bud(c: Canvas, x: Float, y: Float, s: Float, col: OrnamentColors) {
-        fill.color = col.petal
-        c.drawCircle(x, y, s, fill)
-        stroke.color = col.petalEdge; stroke.strokeWidth = s * 0.35f
-        c.drawCircle(x, y, s, stroke)
-    }
-
-    /** Eight-petal flower: pink outer petals over pale-green ones, with a dark centre. */
-    fun rosette(c: Canvas, cx: Float, cy: Float, r: Float, col: OrnamentColors) {
-        for (layer in 0..1) {
-            val rr = if (layer == 0) r else r * 0.72f
-            fill.color = if (layer == 0) col.leaf else col.petal
-            stroke.color = if (layer == 0) col.bandDark else col.petalEdge
-            stroke.strokeWidth = r * 0.06f
-            for (i in 0 until 8) {
-                val ang = Math.toRadians((i * 45.0) + if (layer == 0) 22.5 else 0.0)
-                c.save()
-                c.rotate(Math.toDegrees(ang).toFloat(), cx, cy)
-                val petal = RectF(cx - rr * 0.22f, cy - rr, cx + rr * 0.22f, cy - rr * 0.18f)
-                c.drawOval(petal, fill)
-                c.drawOval(petal, stroke)
-                c.restore()
-            }
+    private fun spiral(x: Float, y: Float, r: Float, clockwise: Boolean, turns: Double): Path {
+        val p = Path()
+        val n = 40
+        for (i in 0..n) {
+            val t = i / n.toDouble()
+            val ang = (if (clockwise) 1 else -1) * t * turns * 2 * PI
+            val rad = r * (1 - 0.8 * t)
+            val px = x + (rad * cos(ang)).toFloat(); val py = y + (rad * sin(ang)).toFloat()
+            if (i == 0) p.moveTo(px, py) else p.lineTo(px, py)
         }
-        fill.color = col.petalEdge
-        c.drawCircle(cx, cy, r * 0.17f, fill)
-        fill.color = col.cartouche
-        c.drawCircle(cx, cy, r * 0.07f, fill)
+        return p
     }
+
+    /** Almond leaf with a white outline and a centre vein. */
+    private fun leaf(c: Canvas, x: Float, y: Float, s: Float, angle: Float, col: OrnamentColors, h: Float) {
+        c.save(); c.rotate(angle, x, y)
+        val p = Path().apply {
+            moveTo(x - s, y)
+            quadTo(x, y - s * 0.75f, x + s, y)
+            quadTo(x, y + s * 0.75f, x - s, y)
+            close()
+        }
+        fill.color = col.leafFill; c.drawPath(p, fill)
+        stroke.color = col.scroll; stroke.strokeWidth = h * 0.02f; c.drawPath(p, stroke)
+        c.drawLine(x - s * 0.7f, y, x + s * 0.7f, y, stroke)
+        c.restore()
+    }
+
+    /** Tear-drop bud pointing toward [angle] (0 = up). */
+    private fun bud(c: Canvas, x: Float, y: Float, s: Float, angle: Float, col: OrnamentColors) {
+        c.save(); c.rotate(angle, x, y)
+        val p = Path().apply {
+            moveTo(x, y - s * 1.6f)
+            cubicTo(x + s * 1.2f, y - s * 0.4f, x + s, y + s, x, y + s)
+            cubicTo(x - s, y + s, x - s * 1.2f, y - s * 0.4f, x, y - s * 1.6f)
+            close()
+        }
+        fill.color = col.petal; c.drawPath(p, fill)
+        stroke.color = col.petalEdge; stroke.strokeWidth = s * 0.25f; c.drawPath(p, stroke)
+        c.restore()
+    }
+
+    /** Eight-petal flower: pink petals with light hearts over green ones, pink centre. */
+    fun flower(c: Canvas, cx: Float, cy: Float, r: Float, col: OrnamentColors) {
+        for (i in 0 until 8) {
+            c.save(); c.rotate(i * 45f + 22.5f, cx, cy)
+            val g = RectF(cx - r * 0.2f, cy - r * 0.95f, cx + r * 0.2f, cy - r * 0.2f)
+            fill.color = col.leafFill; c.drawOval(g, fill)
+            stroke.color = col.border; stroke.strokeWidth = r * 0.05f; c.drawOval(g, stroke)
+            c.restore()
+        }
+        for (i in 0 until 8) {
+            c.save(); c.rotate(i * 45f, cx, cy)
+            val p = Path().apply {
+                moveTo(cx, cy - r * 0.15f)
+                cubicTo(cx + r * 0.38f, cy - r * 0.35f, cx + r * 0.3f, cy - r * 0.85f, cx, cy - r)
+                cubicTo(cx - r * 0.3f, cy - r * 0.85f, cx - r * 0.38f, cy - r * 0.35f, cx, cy - r * 0.15f)
+                close()
+            }
+            fill.color = col.petal; c.drawPath(p, fill)
+            stroke.color = col.petalEdge; stroke.strokeWidth = r * 0.05f; c.drawPath(p, stroke)
+            fill.color = col.petalLight
+            c.drawOval(RectF(cx - r * 0.09f, cy - r * 0.75f, cx + r * 0.09f, cy - r * 0.38f), fill)
+            c.restore()
+        }
+        fill.color = col.petalEdge; c.drawCircle(cx, cy, r * 0.22f, fill)
+        fill.color = col.petalLight; c.drawCircle(cx, cy, r * 0.1f, fill)
+    }
+
+    // ============================================================== page-number badge
 
     /**
-     * Page-number badge: a pale rounded box with a leafy flourish on the page's outer side
-     * ([outerRight] = right-hand page). Returns the box that holds the number.
+     * Page-number badge: a pale rounded box with a lotus-and-vine ornament on the page's outer
+     * side ([outerRight] = right-hand page). Returns the box that holds the number.
      */
+    @Synchronized
     fun pageBadge(c: Canvas, w: Float, h: Float, outerRight: Boolean, col: OrnamentColors): RectF {
-        val flourish = h * 1.1f
-        val box = if (outerRight) RectF(h * 0.1f, h * 0.12f, w - flourish, h * 0.88f)
-        else RectF(flourish, h * 0.12f, w - h * 0.1f, h * 0.88f)
-        fill.color = col.bandLight
-        c.drawRoundRect(box, h * 0.3f, h * 0.3f, fill)
-        stroke.color = col.band; stroke.strokeWidth = h * 0.06f
-        c.drawRoundRect(box, h * 0.3f, h * 0.3f, stroke)
-        // flourish: vine scroll, two leaves and a small rosette
-        val x0 = if (outerRight) box.right else box.left
-        val dir = if (outerRight) 1 else -1
-        val cy = h / 2
-        stroke.color = col.band; stroke.strokeWidth = h * 0.06f
-        val p = Path().apply {
-            moveTo(x0, cy)
-            cubicTo(x0 + dir * flourish * 0.3f, cy - h * 0.45f, x0 + dir * flourish * 0.6f, cy + h * 0.45f, x0 + dir * flourish * 0.85f, cy)
+        val boxW = w * 0.5f
+        val box = if (outerRight) RectF(h * 0.06f, h * 0.18f, h * 0.06f + boxW, h * 0.82f)
+        else RectF(w - h * 0.06f - boxW, h * 0.18f, w - h * 0.06f, h * 0.82f)
+        val key = "badge:${w.toInt()}:${h.toInt()}:$outerRight:${col.night}"
+        val bmp = cache.get(key) ?: Bitmap.createBitmap(w.toInt().coerceAtLeast(1), h.toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888).also {
+            drawBadge(Canvas(it), h, box, outerRight, col)
+            cache.put(key, it)
         }
-        c.drawPath(p, stroke)
-        leaf(c, x0 + dir * flourish * 0.3f, cy + h * 0.22f, h * 0.16f, col)
-        leaf(c, x0 + dir * flourish * 0.55f, cy - h * 0.22f, h * 0.16f, col)
-        rosette(c, x0 + dir * flourish * 0.8f, cy, h * 0.3f, col)
+        c.drawBitmap(bmp, 0f, 0f, null)
         return box
+    }
+
+    private fun drawBadge(c: Canvas, h: Float, box: RectF, outerRight: Boolean, col: OrnamentColors) {
+        val dir = if (outerRight) 1f else -1f
+        val edge = if (outerRight) box.right else box.left
+        val cy = h / 2
+        val rad = box.height() * 0.32f
+        // vines from the box's top and bottom curling out to the lotus, with leaves
+        for (sign in intArrayOf(-1, 1)) {
+            val y0 = cy + sign * box.height() * 0.42f
+            val p = Path().apply {
+                moveTo(edge - dir * rad, y0)
+                cubicTo(edge + dir * h * 0.25f, y0 + sign * h * 0.08f, edge + dir * h * 0.4f, cy + sign * h * 0.04f, edge + dir * h * 0.7f, cy)
+            }
+            stroke.color = col.boxEdge; stroke.strokeWidth = h * 0.07f; c.drawPath(p, stroke)
+            stroke.strokeWidth = h * 0.05f
+            c.drawPath(spiral(edge + dir * h * 0.22f, cy + sign * h * 0.13f, h * 0.1f, dir * sign > 0, 1.4), stroke)
+            val lx = edge + dir * h * 0.5f; val ly = cy + sign * h * 0.33f; val ls = h * 0.25f
+            c.save(); c.rotate(dir * sign * 35f, lx, ly)
+            val leafPath = Path().apply {
+                moveTo(lx - ls, ly); quadTo(lx, ly - ls * 0.6f, lx + ls, ly); quadTo(lx, ly + ls * 0.6f, lx - ls, ly); close()
+            }
+            fill.color = col.leafFill; c.drawPath(leafPath, fill)
+            stroke.color = col.boxEdge; stroke.strokeWidth = h * 0.045f; c.drawPath(leafPath, stroke)
+            c.drawLine(lx - ls * 0.6f, ly, lx + ls * 0.6f, ly, stroke)
+            c.restore()
+        }
+        // lotus: three pink petals fanned toward the outside
+        val lx = edge + dir * h * 0.72f
+        for ((ang, len) in listOf(55f to 0.8f, -55f to 0.8f, 25f to 0.9f, -25f to 0.9f, 0f to 1f)) {
+            c.save(); c.rotate(dir * 90f + ang, lx, cy)
+            val l = h * 0.5f * len
+            val p = Path().apply {
+                moveTo(lx, cy)
+                cubicTo(lx + l * 0.55f, cy - l * 0.25f, lx + l * 0.45f, cy - l * 0.85f, lx, cy - l)
+                cubicTo(lx - l * 0.45f, cy - l * 0.85f, lx - l * 0.55f, cy - l * 0.25f, lx, cy)
+                close()
+            }
+            fill.color = col.petal; c.drawPath(p, fill)
+            stroke.color = col.petalEdge; stroke.strokeWidth = h * 0.035f; c.drawPath(p, stroke)
+            fill.color = col.petalLight
+            c.drawOval(RectF(lx - l * 0.12f, cy - l * 0.75f, lx + l * 0.12f, cy - l * 0.3f), fill)
+            c.restore()
+        }
+        fill.color = col.leafFill; c.drawCircle(lx, cy, h * 0.1f, fill)
+        stroke.color = col.boxEdge; stroke.strokeWidth = h * 0.04f; c.drawCircle(lx, cy, h * 0.1f, stroke)
+
+        // the box itself, drawn last so it sits over the vine roots
+        val rr = box.height() * 0.38f
+        fill.color = col.box; c.drawRoundRect(box, rr, rr, fill)
+        stroke.color = col.boxEdge; stroke.strokeWidth = h * 0.07f; c.drawRoundRect(box, rr, rr, stroke)
+        val inner = RectF(box.left + h * 0.08f, box.top + h * 0.08f, box.right - h * 0.08f, box.bottom - h * 0.08f)
+        stroke.strokeWidth = h * 0.025f; c.drawRoundRect(inner, rr * 0.7f, rr * 0.7f, stroke)
     }
 }

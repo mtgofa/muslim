@@ -72,14 +72,19 @@ fun NumberOrnament(n: Int, color: Color = Palette.Gold) {
 }
 
 @Composable
-fun QuranIndexScreen(onOpen: (page: Int, sura: Int?, ayah: Int?) -> Unit) {
+fun QuranIndexScreen(embedded: Boolean = false, onOpen: (page: Int, sura: Int?, ayah: Int?) -> Unit) {
     var tab by rememberSaveable { mutableStateOf(0) }
     var searching by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     val changes by Settings.changes.collectAsState()
 
     Column(Modifier.fillMaxSize()) {
-        TopBar("القرآن الكريم") {
+        if (embedded) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("الفهرس", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
+                Icon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, "بحث")
+            }
+        } else TopBar("القرآن الكريم") {
             IconButton(onClick = { searching = !searching; if (!searching) query = "" }) {
                 Icon(if (searching) Icons.Rounded.Close else Icons.Rounded.Search, "بحث")
             }
@@ -102,7 +107,7 @@ fun QuranIndexScreen(onOpen: (page: Int, sura: Int?, ayah: Int?) -> Unit) {
         }
         when (tab) {
             0 -> LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp)) {
-                item { ContinueCard(onOpen) }
+                if (!embedded) item { ContinueCard(onOpen) }
                 items(QuranDb.surahs, key = { it.id }) { s ->
                     Row(
                         Modifier
