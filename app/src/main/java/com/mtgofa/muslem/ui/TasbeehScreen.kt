@@ -297,15 +297,21 @@ private fun BeadString(count: Int, modifier: Modifier, onCount: () -> Unit) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val stepPx = with(density) { 70.dp.toPx() }
     var dragged by remember { mutableFloatStateOf(0f) }
+    // one swipe moves exactly one bead, however long it is
+    var countedThisSwipe by remember { mutableStateOf(false) }
     Box(
         modifier
             .pointerInput(Unit) { detectTapGestures { onCount() } }
             .pointerInput(Unit) {
-                detectVerticalDragGestures(onDragEnd = { dragged = 0f }) { change, dy ->
+                detectVerticalDragGestures(
+                    onDragStart = { dragged = 0f; countedThisSwipe = false },
+                    onDragEnd = { dragged = 0f },
+                    onDragCancel = { dragged = 0f },
+                ) { change, dy ->
                     change.consume()
-                    if (dy > 0) {
+                    if (dy > 0 && !countedThisSwipe) {
                         dragged += dy
-                        while (dragged >= stepPx) { dragged -= stepPx; onCount() }
+                        if (dragged >= stepPx * 0.5f) { countedThisSwipe = true; onCount() }
                     }
                 }
             },
@@ -361,7 +367,8 @@ private fun BeadString(count: Int, modifier: Modifier, onCount: () -> Unit) {
         }
         Text(
             count.toString(), fontSize = 72.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Palette.EmeraldDark,
-            modifier = Modifier.align(androidx.compose.ui.AbsoluteAlignment.TopRight).padding(top = 40.dp, end = 24.dp),
+            modifier = Modifier.align(androidx.compose.ui.AbsoluteAlignment.BottomLeft).padding(bottom = 4.dp)
+                .then(Modifier.padding(horizontal = 24.dp)),
         )
         Text(
             "اسحب لأسفل أو اضغط",

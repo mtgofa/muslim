@@ -27,7 +27,8 @@ import kotlinx.coroutines.withContext
 import kotlin.math.min
 
 /** One glyph placed on the page. [x] is the left of the run, [rect] its tap/highlight box. */
-class Placed(val g: Glyph, val x: Float, val baseline: Float, val rect: RectF)
+/** One glyph placed on the page; [wordIndex] is its position in the ayah (-1 for ayah marks). */
+class Placed(val g: Glyph, val x: Float, val baseline: Float, val rect: RectF, val wordIndex: Int = -1)
 
 class Frame(val rect: RectF, val title: String, val titleX: Float, val baseline: Float)
 
@@ -92,6 +93,10 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
     val basmalaSize = 100f * (w * BASMALA_WIDTH) / adv(BASMALA_WORDS, bp)
     bp.textSize = basmalaSize
 
+    // word positions inside each ayah; an ayah begun on an earlier page continues its count
+    val wordCount = HashMap<Pair<Int, Int>, Int>()
+    data.firstAyah?.let { (s, a) -> wordCount[s to a] = QuranDb.wordsBefore(data.page, s, a) }
+
     for (line in data.lines) {
         val y0 = top + (line.number - 1) * lh
         val cy = y0 + lh / 2f
@@ -123,7 +128,13 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
                 line.glyphs.forEachIndexed { i, g ->
                     val gw = ws[i]
                     x -= gw
-                    words += Placed(g, x, baseline, RectF(x - gap / 2f, y0 + lh * 0.04f, x + gw + gap / 2f, y0 + lh * 0.98f))
+                    val idx = if (g.type == GlyphType.WORD) {
+                        val key = g.sura to g.ayah
+                        val n = wordCount[key] ?: 0
+                        wordCount[key] = n + 1
+                        n
+                    } else -1
+                    words += Placed(g, x, baseline, RectF(x - gap / 2f, y0 + lh * 0.04f, x + gw + gap / 2f, y0 + lh * 0.98f), idx)
                     x -= gap
                 }
             }
@@ -144,6 +155,9 @@ fun MushafPageView(
     modifier: Modifier = Modifier,
     onTap: (AyahRef?) -> Unit = {},
     onLongPress: (AyahRef) -> Unit = {},
+    /** meanings mode: words that have a meaning are marked, and tapping one reports it */
+    wordMode: Boolean = false,
+    onWord: (com.mtgofa.muslem.data.WordMeaning, AyahRef) -> Unit = { _, _ -> },
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
@@ -157,15 +171,24 @@ fun MushafPageView(
         val ink = Color(0xFF1A1A1A)
         val hl = Color(0x2A0F7A62)
         val lay = layout ?: return@BoxWithConstraints
+        val explained = remember(lay, wordMode) {
+            if (!wordMode) emptyMap() else lay.words.filter { it.wordIndex >= 0 }
+                .mapNotNull { pl -> com.mtgofa.muslem.data.Meanings.forWord(pl.g.sura, pl.g.ayah, pl.wordIndex)?.let { pl to it } }
+                .toMap()
+        }
 
         Canvas(
             Modifier
                 .fillMaxSize()
-                .pointerInput(lay) {
+                .pointerInput(lay, explained) {
                     fun hit(x: Float, y: Float) = lay.words.firstOrNull { it.rect.contains(x, y) }?.g
                         ?.let { AyahRef(it.sura, it.ayah) }
                     detectTapGestures(
-                        onTap = { o -> onTap(hit(o.x, o.y)) },
+                        onTap = { o ->
+                            val pl = lay.words.firstOrNull { it.rect.contains(o.x, o.y) }
+                            val m = pl?.let { explained[it] }
+                            if (m != null) onWord(m, AyahRef(pl.g.sura, pl.g.ayah)) else onTap(hit(o.x, o.y))
+                        },
                         onLongPress = { o -> hit(o.x, o.y)?.let(onLongPress) },
                     )
                 },
@@ -180,6 +203,17 @@ fun MushafPageView(
                             val r = RectF(row.minOf { it.rect.left }, row.first().rect.top, row.maxOf { it.rect.right }, row.first().rect.bottom)
                             nc.drawRoundRect(r, 18f, 18f, hp)
                         }
+                }
+                // ---- words that have a meaning (meanings mode)
+                if (explained.isNotEmpty()) {
+                    val mp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33C49A45 }
+                    val up = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFC49A45.toInt(); strokeWidth = 4f; strokeCap = Paint.Cap.ROUND }
+                    for (pl in explained.keys) {
+                        val r = pl.rect
+                        val box = RectF(r.left + 4f, r.top + r.height() * 0.12f, r.right - 4f, r.bottom - r.height() * 0.04f)
+                        nc.drawRoundRect(box, 14f, 14f, mp)
+                        nc.drawLine(box.left + 10f, box.bottom - 2f, box.right - 10f, box.bottom - 2f, up)
+                    }
                 }
                 // ---- surah title bands
                 val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.headerSize; color = ink.toArgb() }

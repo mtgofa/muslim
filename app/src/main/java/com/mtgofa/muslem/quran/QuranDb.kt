@@ -104,6 +104,12 @@ object QuranDb {
         return tokens.drop(shown).take(words).joinToString(" ")
     }
 
+    /** How many words of the ayah sit on pages before [page]. */
+    fun wordsBefore(page: Int, sura: Int, ayah: Int): Int = db.rawQuery(
+        "SELECT COUNT(*) FROM glyph WHERE sura=? AND ayah=? AND type=${GlyphType.WORD} AND page<?",
+        arrayOf("$sura", "$ayah", "$page"),
+    ).use { c -> if (c.moveToFirst()) c.getInt(0) else 0 }
+
     /** Text of every ayah of a surah, in order. */
     fun ayahTexts(sura: Int): List<String> =
         db.rawQuery("SELECT text FROM ayah WHERE sura=? ORDER BY ayah", arrayOf("$sura")).use { c ->

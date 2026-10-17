@@ -20,7 +20,11 @@ object Reliability {
     fun exactAlarms(ctx: Context) = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
         ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
-    fun allGood(ctx: Context) = notificationsOn(ctx) && batteryUnrestricted(ctx) && exactAlarms(ctx)
+    /**
+     * What the home screen warns about: only what stops the adhan outright. Battery restriction
+     * and the persistent notification are offered on the reliability page but never nagged about.
+     */
+    fun allGood(ctx: Context) = notificationsOn(ctx) && exactAlarms(ctx)
 
     @SuppressLint("BatteryLife")
     fun askBattery(ctx: Context) {

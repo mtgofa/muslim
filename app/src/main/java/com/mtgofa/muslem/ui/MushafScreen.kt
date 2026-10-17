@@ -174,6 +174,9 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
     var chrome by remember { mutableStateOf(true) }
     var selected by remember { mutableStateOf(focus) }
     var sheet by remember { mutableStateOf<String?>(null) }
+    // meanings mode: words with a meaning are marked; tapping one shows it in a card
+    var wordMode by remember { mutableStateOf(false) }
+    var word by remember { mutableStateOf<Pair<com.mtgofa.muslem.data.WordMeaning, AyahRef>?>(null) }
     val style = remember(changes) { MushafStyle.of(Settings.tajweed) }
     val page = pager.currentPage + 1
 
@@ -238,8 +241,10 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                         highlight = hl,
                         modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 4.dp),
                         // a tap shows or hides the bars; the ayah menu is on long-press
-                        onTap = { selected = null; chrome = !chrome },
+                        onTap = { selected = null; if (word != null) word = null else chrome = !chrome },
                         onLongPress = { a -> selected = a; sheet = "ayah" },
+                        wordMode = wordMode,
+                        onWord = { m, a -> word = m to a },
                     )
                     PageFooter(p, Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp))
                 }
@@ -254,24 +259,24 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     .fillMaxWidth()
                     .background(barBg)
                     .statusBarsPadding()
-                    .height(58.dp)
+                    .height(64.dp)
                     .padding(horizontal = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "رجوع", tint = barInk) }
+                BarIcon(Icons.AutoMirrored.Rounded.ArrowBack, "رجوع", barInk, onBack)
                 Column(Modifier.weight(1f).clickable { sheet = "index" }) {
                     val sura = QuranDb.page(page).suras.firstOrNull()?.let { QuranDb.surah(it).name } ?: ""
                     Text("سورة $sura", style = MaterialTheme.typography.titleMedium, color = barInk)
-                    Text("صفحة ${arabicDigits(page)} · الجزء ${arabicDigits(QuranDb.juzOfPage(page))} · الحزب ${arabicDigits((QuranDb.quarterOfPage(page) + 3) / 4)}", style = MaterialTheme.typography.bodySmall, color = barSoft)
+                    Text("صفحة ${arabicDigits(page)} · الجزء ${arabicDigits(QuranDb.juzOfPage(page))}", style = MaterialTheme.typography.bodySmall, color = barSoft, maxLines = 1)
                 }
-                IconButton(onClick = { sheet = "meanings" }) { Icon(Icons.Rounded.Lightbulb, "معاني الكلمات", tint = barInk) }
-                IconButton(onClick = { sheet = "index" }) { Icon(Icons.Rounded.Search, "الفهرس والبحث", tint = barInk) }
-                IconButton(onClick = { Settings.toggleBookmark(page) }) {
-                    Icon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", tint = if (marked) Palette.Gold else barInk)
+                BarIcon(Icons.Rounded.Lightbulb, "معاني الكلمات", if (wordMode) Palette.Gold else barInk) {
+                    wordMode = !wordMode; word = null; if (wordMode) chrome = false
                 }
-                IconButton(onClick = { sheet = "tajweed" }) {
-                    Icon(Icons.Rounded.PaletteIcon, "التجويد", tint = if (Settings.tajweed) Palette.Gold else barSoft)
+                BarIcon(Icons.Rounded.Search, "الفهرس والبحث", barInk) { sheet = "index" }
+                BarIcon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", if (marked) Palette.Gold else barInk) {
+                    Settings.toggleBookmark(page)
                 }
+                BarIcon(Icons.Rounded.PaletteIcon, "التجويد", if (Settings.tajweed) Palette.Gold else barSoft) { sheet = "tajweed" }
             }
         }
 
@@ -283,6 +288,40 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     onReciter = { sheet = "reciter" },
                     onRepeat = { sheet = "repeat" },
                     onIndex = { sheet = "index" },
+                )
+            }
+        }
+        // ---- meanings mode: the tapped word's meaning, and a way to see the whole page
+        if (wordMode) Column(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding()
+                .padding(start = 14.dp, end = 14.dp, bottom = if (chrome) 96.dp else 34.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            val w = word
+            if (w != null) Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(BarDark).clickable { word = null }.padding(16.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(w.first.word, fontFamily = Plex, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 22.sp, color = Color(0xFFF2D59B))
+                    Spacer(Modifier.weight(1f))
+                    Text("سورة ${QuranDb.surah(w.second.sura).name} · آية ${arabicDigits(w.second.ayah)}", style = MaterialTheme.typography.labelMedium, color = Color(0xB3FFFFFF))
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(w.first.meaning, style = MaterialTheme.typography.bodyLarge, fontSize = 18.sp, lineHeight = 28.sp, color = Color.White)
+            } else Text(
+                "اضغط على كلمة مظلّلة لمعرفة معناها",
+                style = MaterialTheme.typography.labelLarge, color = Color.White,
+                modifier = Modifier.clip(CircleShape).background(BarDark).padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "كل معاني الصفحة", style = MaterialTheme.typography.labelLarge, color = BarDark,
+                    modifier = Modifier.clip(CircleShape).background(Color(0xFFF2D59B)).clickable { sheet = "meanings" }.padding(horizontal = 16.dp, vertical = 9.dp),
+                )
+                Text(
+                    "إنهاء", style = MaterialTheme.typography.labelLarge, color = Color.White,
+                    modifier = Modifier.clip(CircleShape).background(BarDark).clickable { wordMode = false; word = null }.padding(horizontal = 16.dp, vertical = 9.dp),
                 )
             }
         }
@@ -764,7 +803,7 @@ private fun TajweedSheet(onDismiss: () -> Unit) {
                                 Row(
                                     Modifier
                                         .weight(1f)
-                                        .height(58.dp)
+                                        .height(64.dp)
                                         .clip(RoundedCornerShape(14.dp))
                                         .background(c.copy(alpha = if (Settings.tajweed) 0.09f else 0.04f))
                                         .border(1.dp, c.copy(alpha = if (Settings.tajweed) 0.35f else 0.12f), RoundedCornerShape(14.dp))
@@ -831,5 +870,13 @@ private fun PageMeaningsSheet(page: Int, onDismiss: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** A larger icon button for the Mushaf's top bar. */
+@Composable
+private fun BarIcon(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(52.dp)) {
+        Icon(icon, label, tint = tint, modifier = Modifier.size(29.dp))
     }
 }
