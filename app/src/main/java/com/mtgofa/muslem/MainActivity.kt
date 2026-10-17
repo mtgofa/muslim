@@ -68,6 +68,7 @@ import com.mtgofa.muslem.quran.QuranPlayer
 import com.mtgofa.muslem.ui.AboutScreen
 import com.mtgofa.muslem.ui.AdhkarChapterScreen
 import com.mtgofa.muslem.ui.AdhkarHomeScreen
+import com.mtgofa.muslem.ui.HisnScreen
 import com.mtgofa.muslem.ui.TasbeehScreen
 import com.mtgofa.muslem.ui.HomeScreen
 import com.mtgofa.muslem.ui.LocationScreen
@@ -95,7 +96,7 @@ sealed interface Route {
     data object Reciters : Route
     data object About : Route
     data class Mushaf(val page: Int, val focus: AyahRef?) : Route
-    data object Tasbeeh : Route
+    data object Hisn : Route
     data class Adhkar(val id: Int) : Route
 }
 
@@ -186,7 +187,8 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                         )
                     },
                     quran = { QuranIndexScreen { page, s, a -> push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null)) } },
-                    adhkar = { AdhkarHomeScreen(onTasbeeh = { push(Route.Tasbeeh) }, onChapter = { push(Route.Adhkar(it)) }) },
+                    tasbeeh = { TasbeehScreen() },
+                    adhkar = { AdhkarHomeScreen(onHisn = { push(Route.Hisn) }, onChapter = { push(Route.Adhkar(it)) }) },
                     settings = {
                         SettingsScreen(
                             onLocation = { push(Route.Location) },
@@ -205,7 +207,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                 Route.Reciters -> RecitersScreen(::pop)
                 Route.About -> AboutScreen(::pop)
                 is Route.Mushaf -> MushafScreen(route.page, route.focus, ::pop)
-                Route.Tasbeeh -> TasbeehScreen(::pop)
+                Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }
                 is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
         }
@@ -230,11 +232,12 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
 @Composable
 private fun Tabs(
     tab: Int, onTab: (Int) -> Unit,
-    home: @Composable () -> Unit, quran: @Composable () -> Unit, adhkar: @Composable () -> Unit, settings: @Composable () -> Unit,
+    home: @Composable () -> Unit, quran: @Composable () -> Unit, tasbeeh: @Composable () -> Unit,
+    adhkar: @Composable () -> Unit, settings: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
-            when (tab) { 0 -> home(); 1 -> quran(); 2 -> adhkar(); else -> settings() }
+            when (tab) { 0 -> home(); 1 -> quran(); 2 -> tasbeeh(); 3 -> adhkar(); else -> settings() }
         }
         NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
             val colors = NavigationBarItemDefaults.colors(
@@ -243,8 +246,9 @@ private fun Tabs(
             )
             NavigationBarItem(tab == 0, { onTab(0) }, { Icon(Icons.Rounded.Mosque, null) }, label = { Text("الصلاة") }, colors = colors)
             NavigationBarItem(tab == 1, { onTab(1) }, { Icon(Icons.Rounded.MenuBook, null) }, label = { Text("القرآن") }, colors = colors)
-            NavigationBarItem(tab == 2, { onTab(2) }, { Icon(Icons.Rounded.SelfImprovement, null) }, label = { Text("الأذكار") }, colors = colors)
-            NavigationBarItem(tab == 3, { onTab(3) }, { Icon(Icons.Rounded.SettingsIcon, null) }, label = { Text("الإعدادات") }, colors = colors)
+            NavigationBarItem(tab == 2, { onTab(2) }, { Icon(painterResource(R.drawable.ic_tasbeeh), null) }, label = { Text("السبحة") }, colors = colors)
+            NavigationBarItem(tab == 3, { onTab(3) }, { Icon(Icons.Rounded.SelfImprovement, null) }, label = { Text("الأذكار") }, colors = colors)
+            NavigationBarItem(tab == 4, { onTab(4) }, { Icon(Icons.Rounded.SettingsIcon, null) }, label = { Text("الإعدادات") }, colors = colors)
         }
     }
 }

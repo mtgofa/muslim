@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -73,7 +74,7 @@ import kotlin.math.sin
 private const val BEADS = 33
 
 @Composable
-fun TasbeehScreen(onBack: () -> Unit) {
+fun TasbeehScreen(onBack: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     val view = LocalView.current
     val changes by Settings.changes.collectAsState()
@@ -111,7 +112,8 @@ fun TasbeehScreen(onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize()) {
-        TopBar("السبحة", onBack)
+        // as a tab the bottom bar names the screen; opened on its own it gets a title and back
+        if (onBack != null) TopBar("السبحة", onBack) else Spacer(Modifier.statusBarsPadding().height(12.dp))
         // phrase chooser
         val listState = rememberLazyListState(Tasbeeh.phrases.indexOfFirst { it.id == phraseId }.coerceAtLeast(0))
         LazyRow(state = listState, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -228,7 +230,8 @@ fun TasbeehScreen(onBack: () -> Unit) {
         Text(
             "إجمالي تسبيحاتك: ${arabicDigits(total.toString())}",
             style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
-            modifier = Modifier.align(Alignment.CenterHorizontally).navigationBarsPadding().padding(vertical = 14.dp),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+                .then(if (onBack != null) Modifier.navigationBarsPadding() else Modifier).padding(vertical = 12.dp),
         )
     }
 

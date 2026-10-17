@@ -87,7 +87,66 @@ private fun featuredIcon(id: Int): ImageVector = when (id) {
 }
 
 @Composable
-fun AdhkarHomeScreen(onTasbeeh: () -> Unit, onChapter: (Int) -> Unit) {
+fun AdhkarHomeScreen(onHisn: () -> Unit, onChapter: (Int) -> Unit) {
+    val ctx = LocalContext.current
+    val contentVersion by com.mtgofa.muslem.data.Content.version.collectAsState()
+    val chapters = remember(contentVersion) { Adhkar.all(ctx) }
+
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item { TopBar("الأذكار") }
+        item { HisnCard(chapters.size, onHisn) }
+        item { SectionTitle("الأذكار اليومية") }
+        items(Adhkar.featured.chunked(2)) { pair ->
+            Row(Modifier.padding(horizontal = 16.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { f ->
+                    val n = chapters.firstOrNull { it.id == f.id }?.items?.size ?: 0
+                    Row(
+                        Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(MaterialTheme.colorScheme.surface)
+                            .border(1.dp, Palette.Line, RoundedCornerShape(18.dp))
+                            .clickable { onChapter(f.id) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        IconBadge(featuredIcon(f.id), size = 38.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(f.name, style = MaterialTheme.typography.titleSmall, maxLines = 2)
+                            Text("${arabicDigits(n)} ذكر", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                        }
+                    }
+                }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun HisnCard(chapters: Int, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(Brush.linearGradient(listOf(Color(0xFF14936F), Color(0xFF0A5A48))))
+            .clickable(onClick = onClick)
+            .padding(18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("حصن المسلم", color = Color.White, style = MaterialTheme.typography.headlineSmall)
+            Text("${arabicDigits(chapters)} باباً من الأذكار والأدعية مع البحث", color = Color(0xD9FFFFFF), style = MaterialTheme.typography.bodySmall)
+        }
+        Icon(Icons.Rounded.ChevronLeft, null, tint = Color.White)
+    }
+}
+
+/** The whole Hisn al-Muslim on its own page: every chapter, searchable. */
+@Composable
+fun HisnScreen(onBack: () -> Unit, onChapter: (Int) -> Unit) {
     val ctx = LocalContext.current
     val contentVersion by com.mtgofa.muslem.data.Content.version.collectAsState()
     val chapters = remember(contentVersion) { Adhkar.all(ctx) }
@@ -96,96 +155,29 @@ fun AdhkarHomeScreen(onTasbeeh: () -> Unit, onChapter: (Int) -> Unit) {
         val q = QuranDb.normalize(query.trim())
         if (q.isEmpty()) chapters else chapters.filter { QuranDb.normalize(it.title).contains(q) }
     }
-
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
-        item { TopBar("الأذكار") }
-        if (query.isBlank()) {
-            item { TasbeehCard(onTasbeeh) }
-            item { SectionTitle("الأذكار اليومية") }
-            items(Adhkar.featured.chunked(2)) { pair ->
-                Row(Modifier.padding(horizontal = 16.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    pair.forEach { f ->
-                        val n = chapters.firstOrNull { it.id == f.id }?.items?.size ?: 0
-                        Row(
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, Palette.Line, RoundedCornerShape(18.dp))
-                                .clickable { onChapter(f.id) }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            IconBadge(featuredIcon(f.id), size = 38.dp)
-                            Spacer(Modifier.width(10.dp))
-                            Column {
-                                Text(f.name, style = MaterialTheme.typography.titleSmall, maxLines = 2)
-                                Text("${arabicDigits(n)} ذكر", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
-                            }
-                        }
-                    }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-        }
-        item { SectionTitle("كل الأبواب (حصن المسلم)") }
-        item {
-            OutlinedTextField(
-                query, { query = it },
-                placeholder = { Text("ابحث في الأبواب") },
-                leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                singleLine = true, shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-        }
-        items(filtered, key = { it.id }) { c ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { onChapter(c.id) }
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                NumberOrnament(c.id, Palette.Emerald)
-                Spacer(Modifier.width(12.dp))
-                Text(c.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Text(arabicDigits(c.items.size), style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
-                Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TasbeehCard(onClick: () -> Unit) {
-    Box(
-        Modifier
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF14936F), Color(0xFF0A5A48))))
-            .clickable(onClick = onClick)
-            .padding(18.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("السبحة", color = Color.White, style = MaterialTheme.typography.headlineSmall)
-                Text("سبّح بلمسة، مع الاهتزاز والتنبيه بالصوت", color = Color(0xD9FFFFFF), style = MaterialTheme.typography.bodySmall)
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "إجمالي تسبيحاتك: ${arabicDigits(Settings.tasbeehTotal.toString())}",
-                    color = Color(0xFFF2D59B), style = MaterialTheme.typography.labelLarge,
-                )
-            }
-            // a few beads as the card's mark
-            Row(horizontalArrangement = Arrangement.spacedBy((-6).dp)) {
-                repeat(4) { i ->
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Brush.radialGradient(listOf(Color(0xFFF6DDA0), if (i == 3) Color(0xFF8C6A2A) else Color(0xFFC49A45)))),
-                    )
+    Column(Modifier.fillMaxSize()) {
+        TopBar("حصن المسلم", onBack)
+        OutlinedTextField(
+            query, { query = it },
+            placeholder = { Text("ابحث في الأبواب") },
+            leadingIcon = { Icon(Icons.Rounded.Search, null) },
+            singleLine = true, shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+            items(filtered, key = { it.id }) { c ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onChapter(c.id) }
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NumberOrnament(c.id, Palette.Emerald)
+                    Spacer(Modifier.width(12.dp))
+                    Text(c.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    Text(arabicDigits(c.items.size), style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+                    Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
                 }
             }
         }
