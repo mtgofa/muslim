@@ -891,20 +891,19 @@ private fun BarIcon(icon: ImageVector, label: String, tint: Color, onClick: () -
 @Composable
 private fun WirdBadge(page: Int) {
     val ctx = LocalContext.current
-    val w = com.mtgofa.muslem.data.Wird
-    if (!w.active || w.complete) return
-    val done = w.leftToday == 0
+    val k = com.mtgofa.muslem.data.Wird.forPage(page) ?: return
+    val color = when { k.onTrack -> Palette.Emerald; k.behind > 0 -> Color(0xFFC0392B); else -> Color(0xFFB8893A) }
     Row(
-        Modifier.clip(CircleShape).background(if (done) Palette.Emerald else Color(0xFFC0392B)).padding(horizontal = 12.dp, vertical = 3.dp),
+        Modifier.clip(CircleShape).background(color).padding(horizontal = 12.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(w.status(), style = MaterialTheme.typography.labelMedium, color = Color.White, maxLines = 1)
+        Text(k.status(), style = MaterialTheme.typography.labelMedium, color = Color.White, maxLines = 1)
         // the very last page has no page after it to turn to
-        if (page == w.next && page == com.mtgofa.muslem.data.Wird.LAST_PAGE) {
+        if (page == k.next && page == com.mtgofa.muslem.data.Wird.LAST_PAGE) {
             Spacer(Modifier.width(8.dp))
             Text(
-                "تمّ ✓", style = MaterialTheme.typography.labelMedium, color = Color(0xFFC0392B),
-                modifier = Modifier.clip(CircleShape).background(Color.White).clickable { w.markRead(ctx) }.padding(horizontal = 8.dp, vertical = 1.dp),
+                "تمّ ✓", style = MaterialTheme.typography.labelMedium, color = color,
+                modifier = Modifier.clip(CircleShape).background(Color.White).clickable { com.mtgofa.muslem.data.Wird.markRead(ctx, k.id) }.padding(horizontal = 8.dp, vertical = 1.dp),
             )
         }
     }

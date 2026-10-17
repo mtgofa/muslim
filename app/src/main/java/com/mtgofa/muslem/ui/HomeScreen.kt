@@ -213,7 +213,11 @@ fun HomeScreen(
         }
         item {
             val wirdRev by com.mtgofa.muslem.data.Wird.changes.collectAsState()
-            if (com.mtgofa.muslem.data.Wird.active) key(wirdRev) { WirdCard(onOpen = onWird, onRead = onReadWird) }
+            key(wirdRev) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    com.mtgofa.muslem.data.Wird.active.forEach { k -> KhatmaCard(k, onWird) { onReadWird(k.next) } }
+                }
+            }
         }
         // everything else as square tiles, three per row (this replaces the bottom bar)
         item {
@@ -243,45 +247,6 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun WirdCard(onOpen: () -> Unit, onRead: (Int) -> Unit) {
-    val w = com.mtgofa.muslem.data.Wird
-    Row(
-        Modifier
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color(0xFFFFF4E6))
-            .clickable(onClick = onOpen)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(54.dp), contentAlignment = Alignment.Center) {
-            androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                val st = 6.dp.toPx(); val inset = st / 2
-                val sz = androidx.compose.ui.geometry.Size(size.width - st, size.height - st)
-                drawArc(Color(0xFFF6DDB8), 0f, 360f, false, androidx.compose.ui.geometry.Offset(inset, inset), sz, style = androidx.compose.ui.graphics.drawscope.Stroke(st))
-                val f = if (w.pagesPerDay == 0) 0f else w.readToday.toFloat() / w.pagesPerDay
-                drawArc(Color(0xFFC0392B), -90f, 360f * f.coerceAtMost(1f), false, androidx.compose.ui.geometry.Offset(inset, inset), sz,
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(st, cap = androidx.compose.ui.graphics.StrokeCap.Round))
-            }
-            Text(arabicDigits(w.leftToday), style = MaterialTheme.typography.titleMedium, color = Color(0xFF8A2A1F))
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text("الورد اليومي", style = MaterialTheme.typography.titleMedium)
-            Text(
-                if (w.complete) "أتممت الختمة، ما شاء الله" else "${w.status().removePrefix("الورد: ")} · الختام ${wirdDate(w.expectedEnd())}",
-                style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
-            )
-        }
-        if (!w.complete && w.leftToday > 0) Text(
-            "اقرأ", style = MaterialTheme.typography.labelLarge, color = Color.White,
-            modifier = Modifier.clip(CircleShape).background(Color(0xFFC0392B)).clickable { onRead(w.next) }.padding(horizontal = 16.dp, vertical = 8.dp),
-        )
     }
 }
 
