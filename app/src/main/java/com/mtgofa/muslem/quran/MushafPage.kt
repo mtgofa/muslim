@@ -44,6 +44,9 @@ class PageLayout(
 )
 
 private const val LINES = 15
+/** Surah name and basmala sizes, as a fraction of the line height. */
+private const val TITLE_SIZE = 0.5f
+private const val BASMALA_SIZE = 0.42f
 private const val BASMALA_VISUAL = "齃𧻓𥳐𥉉"
 
 /** Measure and place every glyph of [page] into a [w] x [h] pixel box. */
@@ -82,7 +85,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
         val cy = y0 + lh / 2f
         when (line.type) {
             GlyphType.HEADER -> {
-                hp.textSize = lh * 0.58f
+                hp.textSize = lh * TITLE_SIZE
                 val code = line.glyphs.first().code
                 val tw = adv(code, hp)
                 val hm = hp.fontMetrics
@@ -90,7 +93,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
                 frames += Frame(rect, code, (w - tw) / 2f, cy - (hm.ascent + hm.descent) / 2f + lh * 0.04f)
             }
             GlyphType.BASMALA -> {
-                hp.textSize = lh * 0.55f
+                hp.textSize = lh * BASMALA_SIZE
                 val tw = hp.measureText(BASMALA_VISUAL)
                 val hm = hp.fontMetrics
                 basmalas += Triple(BASMALA_VISUAL, (w - tw) / 2f, cy - (hm.ascent + hm.descent) / 2f)
@@ -114,7 +117,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
             }
         }
     }
-    return PageLayout(data.page, size, lh * 0.58f, pageFont, headerFont, words, frames, basmalas)
+    return PageLayout(data.page, size, lh * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas)
 }
 
 /**
@@ -175,7 +178,7 @@ fun MushafPageView(
                     nc.drawText(f.title, f.titleX, f.baseline, tp)
                 }
                 // ---- basmala
-                tp.textSize = lay.headerSize * 0.89f
+                tp.textSize = lay.headerSize * (BASMALA_SIZE / TITLE_SIZE)
                 for ((t, x, y) in lay.basmalas) nc.drawText(t, x, y, tp)
                 // ---- words
                 val wp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.pageFont; textSize = lay.textSize; color = ink.toArgb() }
