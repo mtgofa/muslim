@@ -47,7 +47,7 @@ private const val LINES = 15
 /** Surah name and basmala sizes, as a fraction of the line height. */
 private const val TITLE_SIZE = 0.38f
 /** Extra stroke weight for the page text, as a fraction of the text size. */
-private const val WEIGHT = 0.006f
+private const val WEIGHT = 0.0025f
 private const val BASMALA_SIZE = 0.37f
 private const val BASMALA_VISUAL = "齃𧻓𥳐𥉉"
 

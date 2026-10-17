@@ -215,7 +215,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     Modifier
                         .fillMaxSize()
                         .windowInsetsPadding(WindowInsets.displayCutout)
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     Row(Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 8.dp, vertical = 2.dp)) {
                         Text("سورة $suraName", color = inkSoft, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
