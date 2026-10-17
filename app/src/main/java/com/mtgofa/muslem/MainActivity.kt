@@ -69,6 +69,7 @@ import com.mtgofa.muslem.ui.AboutScreen
 import com.mtgofa.muslem.ui.AdhkarChapterScreen
 import com.mtgofa.muslem.ui.AdhkarHomeScreen
 import com.mtgofa.muslem.ui.HisnScreen
+import com.mtgofa.muslem.ui.QiblaScreen
 import com.mtgofa.muslem.ui.TasbeehScreen
 import com.mtgofa.muslem.ui.HomeScreen
 import com.mtgofa.muslem.ui.LocationScreen
@@ -97,6 +98,7 @@ sealed interface Route {
     data object About : Route
     data class Mushaf(val page: Int, val focus: AyahRef?) : Route
     data object Hisn : Route
+    data object Qibla : Route
     data class Adhkar(val id: Int) : Route
 }
 
@@ -190,6 +192,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                             onPrayer = { prayerSheet = it },
                             onOpenQuran = { push(Route.Mushaf(it, null)) },
                             onReliability = { push(Route.Reliability) },
+                            onQibla = { push(Route.Qibla) },
                         )
                     },
                     quran = { QuranIndexScreen { page, s, a -> push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null)) } },
@@ -214,6 +217,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                 Route.About -> AboutScreen(::pop)
                 is Route.Mushaf -> MushafScreen(route.page, route.focus, ::pop)
                 Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }
+                Route.Qibla -> QiblaScreen(::pop)
                 is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
         }

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material.icons.rounded.WbTwilight
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -102,6 +103,7 @@ fun HomeScreen(
     onPrayer: (Prayer) -> Unit,
     onOpenQuran: (Int) -> Unit,
     onReliability: () -> Unit,
+    onQibla: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
@@ -177,6 +179,19 @@ fun HomeScreen(
                 Prayer.entries.forEachIndexed { i, p ->
                     PrayerRow(p, times[p], isNext = p == next && nextAt.toLocalDate() == today, date = today, rev = changes) { onPrayer(p) }
                     if (i < Prayer.entries.lastIndex) RowDivider()
+                }
+            }
+        }
+        item {
+            Card(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), onClick = onQibla) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconBadge(Icons.Rounded.Explore)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("اتجاه القبلة", style = MaterialTheme.typography.titleMedium)
+                        Text("بوصلة بسيطة تهتز وتتلوّن عند الاتجاه الصحيح", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                    }
+                    Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
                 }
             }
         }
