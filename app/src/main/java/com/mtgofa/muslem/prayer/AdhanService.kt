@@ -93,7 +93,7 @@ class AdhanService : Service() {
         if (fullAdhan) {
             startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
         } else {
-            startSound(tasbeehUri(this), repeats = 2)
+            startSound(tasbeehUri(this), repeats = 1)
         }
     }
 
@@ -104,7 +104,7 @@ class AdhanService : Service() {
         startInForeground(buildNote("تجربة الصوت", title, ongoing = true, fullScreen = false))
         finishedNote = null
         if (muezzin != null) startSound(Muezzins.uri(this, Muezzins.byId(muezzin)), 1)
-        else startSound(tasbeehUri(this), 2)
+        else startSound(tasbeehUri(this), 1)
     }
 
     private fun vibrate() {
