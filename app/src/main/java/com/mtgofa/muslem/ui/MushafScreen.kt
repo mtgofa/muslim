@@ -179,7 +179,8 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
     DisposableEffect(chrome, changes) {
         view.keepScreenOn = Settings.keepScreenOn
         bars?.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        bars?.isAppearanceLightStatusBars = true
+        // light status icons over the dark top bar; the navigation bar sits over the page
+        bars?.isAppearanceLightStatusBars = !chrome
         bars?.isAppearanceLightNavigationBars = true
         val types = androidx.core.view.WindowInsetsCompat.Type.systemBars()
         if (chrome) bars?.show(types) else bars?.hide(types)
@@ -202,8 +203,10 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
 
     val paper = Palette.Paper
     val inkSoft = Color(0xFF8A7A5A)
-    val barBg = Color(0xF7FFFFFF)
-    val barInk = Palette.Ink
+    // dark bars so they stand out over the cream page
+    val barBg = BarDark
+    val barInk = Color.White
+    val barSoft = Color(0xB3FFFFFF)
 
     Box(Modifier.fillMaxSize().background(paper)) {
         // the page always uses the whole screen; bars float over it
@@ -254,14 +257,14 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                 Column(Modifier.weight(1f).clickable { sheet = "index" }) {
                     val sura = QuranDb.page(page).suras.firstOrNull()?.let { QuranDb.surah(it).name } ?: ""
                     Text("سورة $sura", style = MaterialTheme.typography.titleMedium, color = barInk)
-                    Text("صفحة ${arabicDigits(page)} · الجزء ${arabicDigits(QuranDb.juzOfPage(page))} · الحزب ${arabicDigits((QuranDb.quarterOfPage(page) + 3) / 4)}", style = MaterialTheme.typography.bodySmall, color = inkSoft)
+                    Text("صفحة ${arabicDigits(page)} · الجزء ${arabicDigits(QuranDb.juzOfPage(page))} · الحزب ${arabicDigits((QuranDb.quarterOfPage(page) + 3) / 4)}", style = MaterialTheme.typography.bodySmall, color = barSoft)
                 }
                 IconButton(onClick = { sheet = "index" }) { Icon(Icons.Rounded.Search, "الفهرس والبحث", tint = barInk) }
                 IconButton(onClick = { Settings.toggleBookmark(page) }) {
                     Icon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", tint = if (marked) Palette.Gold else barInk)
                 }
                 IconButton(onClick = { sheet = "tajweed" }) {
-                    Icon(Icons.Rounded.PaletteIcon, "التجويد", tint = if (Settings.tajweed) Palette.Emerald else inkSoft)
+                    Icon(Icons.Rounded.PaletteIcon, "التجويد", tint = if (Settings.tajweed) Palette.Gold else barSoft)
                 }
             }
         }
@@ -321,11 +324,11 @@ private fun PlayerBar(page: Int, onReciter: () -> Unit, onRepeat: () -> Unit, on
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(10.dp)
-            .background(Palette.Surface, RoundedCornerShape(24.dp))
+            .background(BarDark, RoundedCornerShape(24.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         androidx.compose.runtime.CompositionLocalProvider(
-            androidx.compose.material3.LocalContentColor provides Palette.Ink,
+            androidx.compose.material3.LocalContentColor provides Color.White,
         ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
@@ -343,20 +346,20 @@ private fun PlayerBar(page: Int, onReciter: () -> Unit, onRepeat: () -> Unit, on
                         cur.ayah == 0 -> "سورة ${QuranDb.surah(cur.sura).name} · البسملة"
                         else -> "سورة ${QuranDb.surah(cur.sura).name} · آية ${arabicDigits(cur.ayah)}"
                     },
-                    style = MaterialTheme.typography.bodySmall, color = Palette.Muted, maxLines = 1,
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xB3FFFFFF), maxLines = 1,
                 )
             }
             val repeatOn = Settings.ayahRepeat > 1 || Settings.rangeRepeat != 1
             if (!play.active) IconButton(onClick = onIndex) { Icon(Icons.AutoMirrored.Rounded.List, "الفهرس") }
             IconButton(onClick = onRepeat) {
-                Icon(if (Settings.ayahRepeat > 1) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "التكرار", tint = if (repeatOn) Palette.Emerald else Palette.Muted)
+                Icon(if (Settings.ayahRepeat > 1) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "التكرار", tint = if (repeatOn) Palette.Gold else Color.White)
             }
             if (play.active) IconButton(onClick = { QuranPlayer.skip(ctx, forward = false) }) { Icon(Icons.Rounded.SkipNext, "السابق") }
             Box(
                 Modifier
                     .size(48.dp)
                     .clip(CircleShape)
-                    .background(Palette.Emerald)
+                    .background(Palette.Gold)
                     .clickable {
                         if (play.active) QuranPlayer.toggle(ctx)
                         else {
@@ -372,7 +375,7 @@ private fun PlayerBar(page: Int, onReciter: () -> Unit, onRepeat: () -> Unit, on
             }
             if (play.active) {
                 IconButton(onClick = { QuranPlayer.skip(ctx, forward = true) }) { Icon(Icons.Rounded.SkipPrevious, "التالي") }
-                IconButton(onClick = { QuranPlayer.stop(ctx) }) { Icon(Icons.Rounded.Close, "إيقاف", tint = Palette.Muted) }
+                IconButton(onClick = { QuranPlayer.stop(ctx) }) { Icon(Icons.Rounded.Close, "إيقاف", tint = Color(0xB3FFFFFF)) }
             }
         }
         }
@@ -738,3 +741,6 @@ private fun TajweedSheet(onDismiss: () -> Unit) {
         }
     }
 }
+
+/** Background of the Mushaf's floating bars: deep emerald, nearly opaque. */
+private val BarDark = Color(0xF20B3A2C)

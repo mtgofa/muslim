@@ -43,6 +43,11 @@ class PlaybackService : MediaSessionService() {
             this, 7, Intent(this, MainActivity::class.java).putExtra("openMushaf", true),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        // our own small icon instead of the library's generic play glyph
+        setMediaNotificationProvider(
+            androidx.media3.session.DefaultMediaNotificationProvider.Builder(this).build()
+                .apply { setSmallIcon(com.mtgofa.muslem.R.drawable.ic_stat_mosque) },
+        )
         session = MediaSession.Builder(this, player)
             .setSessionActivity(open)
             .setCallback(object : MediaSession.Callback {
@@ -189,9 +194,25 @@ object QuranPlayer {
             .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
             .setMediaMetadata(
                 MediaMetadata.Builder().setTitle(title).setArtist(r.name + if (r.style != "مرتّل") " (${r.style})" else "")
-                    .setAlbumTitle("القرآن الكريم").build(),
+                    .setAlbumTitle("القرآن الكريم")
+                    .setArtworkData(artwork(ctx), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+                    .build(),
             )
             .build()
+    }
+
+    private var artworkBytes: ByteArray? = null
+
+    /** Cover art for the media notification: the app icon (emerald, mosque and crescent). */
+    private fun artwork(ctx: Context): ByteArray = artworkBytes ?: run {
+        val size = 512
+        val bmp = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(bmp)
+        for (res in intArrayOf(com.mtgofa.muslem.R.drawable.ic_launcher_background, com.mtgofa.muslem.R.drawable.ic_launcher_foreground)) {
+            androidx.core.content.ContextCompat.getDrawable(ctx, res)?.apply { setBounds(0, 0, size, size); draw(c) }
+        }
+        java.io.ByteArrayOutputStream().also { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+            .also { artworkBytes = it }
     }
 
     fun toggle(ctx: Context) = withController(ctx) { if (it.isPlaying) it.pause() else it.play() }
