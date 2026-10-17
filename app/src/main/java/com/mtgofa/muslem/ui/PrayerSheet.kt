@@ -40,6 +40,8 @@ fun PrayerSheet(p: Prayer, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
     fun changed() = Scheduler.schedule(ctx)
+    // closing the sheet stops a test adhan that is still playing
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { AdhanService.stopPreview(ctx) } }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
         // settings are plain reads; keying on the change counter re-reads them after every edit

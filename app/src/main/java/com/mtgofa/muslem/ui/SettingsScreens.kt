@@ -258,6 +258,8 @@ fun MuezzinScreen(onBack: () -> Unit) {
     var rev by remember { mutableStateOf(0) }
     var fajrMode by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // a preview must not outlive the page (it would only stop from the notification)
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { AdhanService.stopPreview(ctx) } }
 
     key(changes, rev) {
         Column(Modifier.fillMaxSize()) {

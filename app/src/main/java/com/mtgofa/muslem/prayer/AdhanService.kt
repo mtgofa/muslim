@@ -212,6 +212,12 @@ class AdhanService : Service() {
             ctx, 4, Intent(ctx, AdhanService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE,
         )
 
+        /** Stop a settings preview, leaving a real adhan alone. */
+        fun stopPreview(ctx: Context) {
+            val s = _sounding.value ?: return
+            if (s.prayer == null) stop(ctx)
+        }
+
         fun stop(ctx: Context) {
             if (_sounding.value != null) ctx.startService(Intent(ctx, AdhanService::class.java).setAction(ACTION_STOP))
         }
