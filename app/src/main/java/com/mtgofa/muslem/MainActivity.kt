@@ -28,7 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mosque
-import androidx.compose.material.icons.rounded.SelfImprovement
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.Settings as SettingsIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -253,7 +253,7 @@ private fun Tabs(
             NavigationBarItem(tab == 0, { onTab(0) }, { Icon(Icons.Rounded.Mosque, null) }, label = { Text("الصلاة") }, colors = colors)
             NavigationBarItem(tab == 1, { onTab(1) }, { Icon(Icons.Rounded.MenuBook, null) }, label = { Text("القرآن") }, colors = colors)
             NavigationBarItem(tab == 2, { onTab(2) }, { Icon(painterResource(R.drawable.ic_tasbeeh), null) }, label = { Text("السبحة") }, colors = colors)
-            NavigationBarItem(tab == 3, { onTab(3) }, { Icon(Icons.Rounded.SelfImprovement, null) }, label = { Text("الأذكار") }, colors = colors)
+            NavigationBarItem(tab == 3, { onTab(3) }, { Icon(Icons.Rounded.AutoStories, null) }, label = { Text("الأذكار") }, colors = colors)
             NavigationBarItem(tab == 4, { onTab(4) }, { Icon(Icons.Rounded.SettingsIcon, null) }, label = { Text("الإعدادات") }, colors = colors)
         }
     }

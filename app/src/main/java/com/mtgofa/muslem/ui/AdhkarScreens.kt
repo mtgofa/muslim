@@ -34,7 +34,7 @@ import androidx.compose.material.icons.rounded.Mosque
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Restaurant
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material.icons.rounded.SelfImprovement
+import androidx.compose.material.icons.rounded.AutoStories
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material.icons.rounded.WbSunny
@@ -83,7 +83,7 @@ private fun featuredIcon(id: Int): ImageVector = when (id) {
     69, 70 -> Icons.Rounded.Restaurant
     96 -> Icons.Rounded.DirectionsCar
     34 -> Icons.Rounded.Favorite
-    else -> Icons.Rounded.SelfImprovement
+    else -> Icons.Rounded.AutoStories
 }
 
 @Composable
