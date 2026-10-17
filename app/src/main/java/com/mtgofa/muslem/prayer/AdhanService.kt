@@ -90,10 +90,11 @@ class AdhanService : Service() {
             finish(); return
         }
 
-        if (fullAdhan) {
-            startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
-        } else {
-            startSound(tasbeehUri(this), repeats = 1)
+        when {
+            fullAdhan -> startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
+            // the iqama alert calls the iqama itself; reminders say "سبحان الله"
+            type == EventType.IQAMA -> startSound(rawUri(R.raw.iqama), repeats = 1)
+            else -> startSound(tasbeehUri(this), repeats = 1)
         }
     }
 
@@ -106,6 +107,8 @@ class AdhanService : Service() {
         if (muezzin != null) startSound(Muezzins.uri(this, Muezzins.byId(muezzin)), 1)
         else startSound(tasbeehUri(this), 1)
     }
+
+    private fun rawUri(res: Int): Uri = Uri.parse("android.resource://$packageName/$res")
 
     private fun vibrate() {
         val v = getSystemService(android.os.Vibrator::class.java) ?: return
