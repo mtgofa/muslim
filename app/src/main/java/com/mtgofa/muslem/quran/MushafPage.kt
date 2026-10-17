@@ -82,11 +82,11 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
         val cy = y0 + lh / 2f
         when (line.type) {
             GlyphType.HEADER -> {
-                hp.textSize = lh * 0.62f
+                hp.textSize = lh * 0.58f
                 val code = line.glyphs.first().code
                 val tw = adv(code, hp)
                 val hm = hp.fontMetrics
-                val rect = RectF(w * 0.03f, y0 + lh * 0.1f, w * 0.97f, y0 + lh * 0.9f)
+                val rect = RectF(w * 0.01f, y0 + lh * 0.06f, w * 0.99f, y0 + lh * 0.94f)
                 frames += Frame(rect, code, (w - tw) / 2f, cy - (hm.ascent + hm.descent) / 2f + lh * 0.04f)
             }
             GlyphType.BASMALA -> {
@@ -114,7 +114,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
             }
         }
     }
-    return PageLayout(data.page, size, lh * 0.62f, pageFont, headerFont, words, frames, basmalas)
+    return PageLayout(data.page, size, lh * 0.58f, pageFont, headerFont, words, frames, basmalas)
 }
 
 /**
@@ -141,8 +141,6 @@ fun MushafPageView(
         }
         val night = style == MushafStyle.DARK_TAJWEED || style == MushafStyle.DARK_PLAIN
         val ink = if (night) Color(0xFFE9E6DC) else Color(0xFF1A1A1A)
-        val frameColor = if (night) Color(0xFF7FB8A4) else Color(0xFF0F7A62)
-        val goldColor = Color(0xFFC8963E)
         val hl = if (night) Color(0x3355C9A0) else Color(0x2A0F7A62)
         val lay = layout ?: return@BoxWithConstraints
 
@@ -169,28 +167,11 @@ fun MushafPageView(
                             nc.drawRoundRect(r, 18f, 18f, hp)
                         }
                 }
-                // ---- surah title frames
-                val fp = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.style = Paint.Style.STROKE; strokeWidth = 3f; color = frameColor.toArgb() }
-                val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = (if (night) Color(0x22FFFFFF) else Color(0x140F7A62)).toArgb() }
-                val gp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = goldColor.toArgb() }
+                // ---- surah title bands
                 val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.headerSize; color = ink.toArgb() }
+                val oc = OrnamentColors(night)
                 for (f in lay.frames) {
-                    val r = f.rect
-                    val rr = r.height() / 2f
-                    nc.drawRoundRect(r, rr, rr, fill)
-                    nc.drawRoundRect(r, rr, rr, fp)
-                    val inner = RectF(r.left + 8f, r.top + 8f, r.right - 8f, r.bottom - 8f)
-                    fp.strokeWidth = 1.2f
-                    nc.drawRoundRect(inner, rr - 8f, rr - 8f, fp)
-                    fp.strokeWidth = 3f
-                    // small gold diamonds at both ends
-                    for (cx in floatArrayOf(r.left + rr, r.right - rr)) {
-                        val cy = r.centerY(); val d = r.height() * 0.16f
-                        val path = android.graphics.Path().apply {
-                            moveTo(cx, cy - d); lineTo(cx + d, cy); lineTo(cx, cy + d); lineTo(cx - d, cy); close()
-                        }
-                        nc.drawPath(path, gp)
-                    }
+                    Ornaments.surahFrame(nc, f.rect, oc)
                     nc.drawText(f.title, f.titleX, f.baseline, tp)
                 }
                 // ---- basmala

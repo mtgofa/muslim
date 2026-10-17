@@ -56,7 +56,7 @@ object MushafFonts {
         return tf
     }
 
-    private const val CACHE_VERSION = 2
+    private const val CACHE_VERSION = 3
 
     /** Palette entry the fonts use for hollow layout boxes (tooling marks, never printed). */
     private const val MARKER_ENTRY = 14
@@ -81,10 +81,21 @@ object MushafFonts {
             val indices = off + 12
             val chosen = buf.getShort(indices + 2 * index).toInt() and 0xFFFF
             buf.putShort(indices, chosen.toShort())
-            if (hideMarkers && MARKER_ENTRY < numEntries) {
-                // colour records are BGRA; byte 3 is alpha
-                val records = off + buf.getInt(off + 8)
-                font[records + 4 * (chosen + MARKER_ENTRY) + 3] = 0
+            val records = off + buf.getInt(off + 8)
+            // colour records are BGRA
+            fun set(entry: Int, argb: Long) {
+                if (entry >= numEntries) return
+                val at = records + 4 * (chosen + entry)
+                font[at] = (argb and 0xFF).toByte()
+                font[at + 1] = (argb shr 8 and 0xFF).toByte()
+                font[at + 2] = (argb shr 16 and 0xFF).toByte()
+                font[at + 3] = (argb shr 24 and 0xFF).toByte()
+            }
+            if (hideMarkers) set(MARKER_ENTRY, 0x00000000)
+            // softer ayah-marker ornaments on the light page: green bud, rose petals
+            if (index == 0 || index == 3) {
+                set(10, 0xFF4E9F5D)
+                set(11, 0xFFE79CBC)
             }
             return
         }
