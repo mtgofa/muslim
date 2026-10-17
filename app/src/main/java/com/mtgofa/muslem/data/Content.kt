@@ -21,7 +21,8 @@ object Content {
     const val TASBEEH = "tasbeeh.json"
     const val RECITERS = "reciters.json"
     const val MUEZZINS = "muezzins.json"
-    private val FILES = listOf(ADHKAR, TASBEEH, RECITERS, MUEZZINS)
+    const val MEANINGS = "meanings.json"
+    private val FILES = listOf(ADHKAR, TASBEEH, RECITERS, MUEZZINS, MEANINGS)
     private const val SYNC_EVERY_MS = 6 * 3600_000L
 
     lateinit var app: Context; private set
@@ -64,7 +65,10 @@ object Content {
                 Http.client.newCall(req).execute().use { resp ->
                     if (resp.code != 200) return@use
                     val body = resp.body?.string().orEmpty()
-                    if (JSONArray(body).length() == 0) return@use // never replace content with an empty list
+                    // never replace content with an empty or broken file
+                    val trimmed = body.trimStart()
+                    val size = if (trimmed.startsWith("{")) org.json.JSONObject(body).length() else JSONArray(body).length()
+                    if (size == 0) return@use
                     dir().mkdirs()
                     val tmp = File(dir(), "$name.tmp")
                     tmp.writeText(body)

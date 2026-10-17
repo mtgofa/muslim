@@ -51,6 +51,8 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Palette as PaletteIcon
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -262,6 +264,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     Text("سورة $sura", style = MaterialTheme.typography.titleMedium, color = barInk)
                     Text("صفحة ${arabicDigits(page)} · الجزء ${arabicDigits(QuranDb.juzOfPage(page))} · الحزب ${arabicDigits((QuranDb.quarterOfPage(page) + 3) / 4)}", style = MaterialTheme.typography.bodySmall, color = barSoft)
                 }
+                IconButton(onClick = { sheet = "meanings" }) { Icon(Icons.Rounded.Lightbulb, "معاني الكلمات", tint = barInk) }
                 IconButton(onClick = { sheet = "index" }) { Icon(Icons.Rounded.Search, "الفهرس والبحث", tint = barInk) }
                 IconButton(onClick = { Settings.toggleBookmark(page) }) {
                     Icon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", tint = if (marked) Palette.Gold else barInk)
@@ -298,6 +301,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
         }
         "repeat" -> RepeatSheet(selected ?: QuranDb.page(page).firstAyah?.let { AyahRef(it.first, it.second) } ?: AyahRef(1, 1)) { sheet = null }
         "tajweed" -> TajweedSheet { sheet = null }
+        "meanings" -> PageMeaningsSheet(page) { sheet = null }
         "reciter" -> ReciterSheet(currentSura = QuranDb.page(page).suras.firstOrNull() ?: 1) { sheet = null }
         "index" -> ModalBottomSheet(
             onDismissRequest = { sheet = null },
@@ -397,13 +401,23 @@ private fun AyahSheet(a: AyahRef, onDismiss: () -> Unit, onRepeat: () -> Unit) {
     val marked = remember(changes) { (a.sura to a.ayah) in Settings.ayahMarks() }
     val label = "سورة ${s.name} · آية ${arabicDigits(a.ayah)}"
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
+        Column(
+            Modifier.navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 16.dp)
+                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+        ) {
             Text(label, style = MaterialTheme.typography.titleMedium, color = Palette.Emerald)
             Spacer(Modifier.height(8.dp))
             Text(
                 text, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 21.sp, lineHeight = 38.sp),
                 modifier = Modifier.background(Palette.Paper, RoundedCornerShape(16.dp)).padding(14.dp).fillMaxWidth(),
             )
+            val meanings = remember(a) { com.mtgofa.muslem.data.Meanings.of(a.sura, a.ayah) }
+            if (meanings.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Text("معاني الكلمات", style = MaterialTheme.typography.titleSmall, color = Palette.Gold)
+                Spacer(Modifier.height(6.dp))
+                meanings.forEach { MeaningRow(it) }
+            }
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Action(Icons.Rounded.PlayArrow, "تشغيل من هنا", Modifier.weight(1f)) {
@@ -775,3 +789,47 @@ private fun TajweedSheet(onDismiss: () -> Unit) {
 
 /** Background of the Mushaf's floating bars: deep emerald, nearly opaque. */
 private val BarDark = Color(0xF20B3A2C)
+
+// ============================================================================ word meanings
+
+@Composable
+private fun MeaningRow(m: com.mtgofa.muslem.data.WordMeaning) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.Top) {
+        Text(
+            m.word, fontFamily = Plex, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, fontSize = 17.sp,
+            color = Palette.EmeraldDark,
+            modifier = Modifier.background(Palette.EmeraldSoft, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 4.dp),
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(m.meaning, style = MaterialTheme.typography.bodyLarge, lineHeight = 26.sp, modifier = Modifier.weight(1f).padding(top = 3.dp))
+    }
+}
+
+/** Every word meaning on the page, grouped by ayah. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PageMeaningsSheet(page: Int, onDismiss: () -> Unit) {
+    val groups = remember(page) {
+        QuranDb.ayahsOnPage(page).map { it to com.mtgofa.muslem.data.Meanings.of(it.sura, it.ayah) }.filter { it.second.isNotEmpty() }
+    }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.navigationBarsPadding().fillMaxHeight(0.85f)) {
+            Text("معاني كلمات الصفحة ${arabicDigits(page)}", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 20.dp))
+            Text("من «السراج في بيان غريب القرآن» و«كلمات القرآن»", style = MaterialTheme.typography.bodySmall, color = Palette.Muted, modifier = Modifier.padding(horizontal = 20.dp))
+            Spacer(Modifier.height(8.dp))
+            if (groups.isEmpty()) Text("لا توجد كلمات غريبة في هذه الصفحة", color = Palette.Muted, modifier = Modifier.padding(20.dp))
+            LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp)) {
+                groups.forEach { (ref, list) ->
+                    item(key = "h${ref.sura}:${ref.ayah}") {
+                        Text(
+                            "سورة ${QuranDb.surah(ref.sura).name} · آية ${arabicDigits(ref.ayah)}",
+                            style = MaterialTheme.typography.labelLarge, color = Palette.Gold,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
+                        )
+                    }
+                    items(list.size, key = { "w${ref.sura}:${ref.ayah}:$it" }) { MeaningRow(list[it]) }
+                }
+            }
+        }
+    }
+}
