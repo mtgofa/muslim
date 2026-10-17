@@ -30,7 +30,6 @@ object Palette {
     val Muted = Color(0xFF6A746F)
     val Line = Color(0xFFE6E9E5)
     val Paper = Color(0xFFFFFCF4)
-    val PaperNight = Color(0xFF15191A)
 }
 
 val Plex = FontFamily(

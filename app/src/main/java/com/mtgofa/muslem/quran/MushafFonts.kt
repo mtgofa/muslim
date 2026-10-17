@@ -6,20 +6,15 @@ import java.io.File
 import java.nio.ByteBuffer
 
 /**
- * The page fonts are colour fonts (COLR v0 + CPAL) carrying several palettes: tajweed / plain,
- * each for a light and a dark page. Android always draws palette 0, so the palette we want is
+ * The page fonts are colour fonts (COLR v0 + CPAL) carrying several palettes; we use the
+ * tajweed one and the plain one. Android always draws palette 0, so the palette we want is
  * made the default by rewriting the CPAL index table, and the result is cached on disk.
  */
 enum class MushafStyle(val palette: Int) {
-    LIGHT_TAJWEED(0), DARK_TAJWEED(1), LIGHT_PLAIN(3), DARK_PLAIN(4);
+    TAJWEED(0), PLAIN(3);
 
     companion object {
-        fun of(tajweed: Boolean, night: Boolean) = when {
-            tajweed && !night -> LIGHT_TAJWEED
-            tajweed -> DARK_TAJWEED
-            !night -> LIGHT_PLAIN
-            else -> DARK_PLAIN
-        }
+        fun of(tajweed: Boolean) = if (tajweed) TAJWEED else PLAIN
     }
 }
 

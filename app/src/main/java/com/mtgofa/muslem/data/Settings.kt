@@ -115,9 +115,6 @@ object Settings {
     var tajweed: Boolean
         get() = sp.getBoolean("tajweed", true)
         set(v) = edit { putBoolean("tajweed", v) }
-    var mushafNight: Boolean
-        get() = sp.getBoolean("mushafNight", false)
-        set(v) = edit { putBoolean("mushafNight", v) }
     var ayahRepeat: Int
         get() = sp.getInt("ayahRepeat", 1)
         set(v) = edit { putInt("ayahRepeat", v) }

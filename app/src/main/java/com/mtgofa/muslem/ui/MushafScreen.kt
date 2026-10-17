@@ -46,7 +46,6 @@ import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Palette as PaletteIcon
@@ -169,8 +168,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
     var chrome by remember { mutableStateOf(true) }
     var selected by remember { mutableStateOf(focus) }
     var sheet by remember { mutableStateOf<String?>(null) }
-    val style = remember(changes) { MushafStyle.of(Settings.tajweed, Settings.mushafNight) }
-    val night = Settings.mushafNight
+    val style = remember(changes) { MushafStyle.of(Settings.tajweed) }
     val page = pager.currentPage + 1
 
     // full screen: clock, battery and navigation bar hidden; a tap brings them back with the bars
@@ -180,8 +178,8 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
     DisposableEffect(chrome, changes) {
         view.keepScreenOn = Settings.keepScreenOn
         bars?.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        bars?.isAppearanceLightStatusBars = !night
-        bars?.isAppearanceLightNavigationBars = !night
+        bars?.isAppearanceLightStatusBars = true
+        bars?.isAppearanceLightNavigationBars = true
         val types = androidx.core.view.WindowInsetsCompat.Type.systemBars()
         if (chrome) bars?.show(types) else bars?.hide(types)
         onDispose {
@@ -201,10 +199,10 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
         if (target != pager.currentPage + 1) pager.animateScrollToPage(target - 1)
     }
 
-    val paper = if (night) Palette.PaperNight else Palette.Paper
-    val inkSoft = if (night) Color(0xFFB9B3A3) else Color(0xFF8A7A5A)
-    val barBg = if (night) Color(0xF2202627) else Color(0xF7FFFFFF)
-    val barInk = if (night) Color.White else Palette.Ink
+    val paper = Palette.Paper
+    val inkSoft = Color(0xFF8A7A5A)
+    val barBg = Color(0xF7FFFFFF)
+    val barInk = Palette.Ink
 
     Box(Modifier.fillMaxSize().background(paper)) {
         // the page always uses the whole screen; bars float over it
@@ -212,21 +210,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
             val p = idx + 1
             val data = remember(p) { QuranDb.page(p) }
             val suraName = data.suras.firstOrNull()?.let { QuranDb.surah(it).name } ?: ""
-            // odd pages are right-hand pages: the spine (binding) is on their left
-            val rightHand = p % 2 == 1
             Box(Modifier.fillMaxSize()) {
-                Box(
-                    Modifier
-                        .align(if (rightHand) androidx.compose.ui.AbsoluteAlignment.CenterLeft else androidx.compose.ui.AbsoluteAlignment.CenterRight)
-                        .fillMaxHeight()
-                        .width(18.dp)
-                        .background(
-                            androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                if (rightHand) listOf(Color(if (night) 0x55000000 else 0x22000000), Color.Transparent)
-                                else listOf(Color.Transparent, Color(if (night) 0x55000000 else 0x22000000)),
-                            ),
-                        ),
-                )
                 Column(
                     Modifier
                         .fillMaxSize()
@@ -249,7 +233,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                         },
                         onLongPress = { a -> selected = a; sheet = "ayah" },
                     )
-                    PageBadge(p, night, Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp))
+                    PageBadge(p, Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp))
                 }
             }
         }
@@ -276,11 +260,8 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                 IconButton(onClick = { Settings.toggleBookmark(page) }) {
                     Icon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", tint = if (marked) Palette.Gold else barInk)
                 }
-                IconButton(onClick = { Settings.tajweed = !Settings.tajweed }) {
+                IconButton(onClick = { sheet = "tajweed" }) {
                     Icon(Icons.Rounded.PaletteIcon, "التجويد", tint = if (Settings.tajweed) Palette.Emerald else inkSoft)
-                }
-                IconButton(onClick = { Settings.mushafNight = !Settings.mushafNight }) {
-                    Icon(Icons.Rounded.DarkMode, "الوضع الليلي", tint = if (night) Palette.Gold else inkSoft)
                 }
             }
         }
@@ -290,7 +271,6 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
             AnimatedVisibility(chrome, enter = fadeIn() + slideInVertically { it }, exit = fadeOut() + slideOutVertically { it }) {
                 PlayerBar(
                     page = page,
-                    night = night,
                     onReciter = { sheet = "reciter" },
                     onRepeat = { sheet = "repeat" },
                     onIndex = { sheet = "index" },
@@ -311,6 +291,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
             AyahSheet(a, onDismiss = { sheet = null }, onRepeat = { sheet = "repeat" })
         }
         "repeat" -> RepeatSheet(selected ?: QuranDb.page(page).firstAyah?.let { AyahRef(it.first, it.second) } ?: AyahRef(1, 1)) { sheet = null }
+        "tajweed" -> TajweedSheet { sheet = null }
         "reciter" -> ReciterSheet(currentSura = QuranDb.page(page).suras.firstOrNull() ?: 1) { sheet = null }
         "index" -> ModalBottomSheet(
             onDismissRequest = { sheet = null },
@@ -330,7 +311,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
 }
 
 @Composable
-private fun PlayerBar(page: Int, night: Boolean, onReciter: () -> Unit, onRepeat: () -> Unit, onIndex: () -> Unit) {
+private fun PlayerBar(page: Int, onReciter: () -> Unit, onRepeat: () -> Unit, onIndex: () -> Unit) {
     val ctx = LocalContext.current
     val play by QuranPlayer.state.collectAsState()
     val changes by Settings.changes.collectAsState()
@@ -340,11 +321,11 @@ private fun PlayerBar(page: Int, night: Boolean, onReciter: () -> Unit, onRepeat
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(10.dp)
-            .background(if (night) Color(0xFF232A2B) else Palette.Surface, RoundedCornerShape(24.dp))
+            .background(Palette.Surface, RoundedCornerShape(24.dp))
             .padding(horizontal = 10.dp, vertical = 8.dp),
     ) {
         androidx.compose.runtime.CompositionLocalProvider(
-            androidx.compose.material3.LocalContentColor provides if (night) Color(0xFFE9E6DC) else Palette.Ink,
+            androidx.compose.material3.LocalContentColor provides Palette.Ink,
         ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(
@@ -600,32 +581,89 @@ private fun ReciterSheet(currentSura: Int, onDismiss: () -> Unit) {
     }
 }
 
-/** Page number in an ornamented badge on the page's outer edge (right on right-hand pages). */
+/** Page number in a small tag that points to the page's outer edge (right on right-hand pages). */
 @Composable
-private fun PageBadge(page: Int, night: Boolean, modifier: Modifier) {
+private fun PageBadge(page: Int, modifier: Modifier) {
     val rightHand = page % 2 == 1
     Box(modifier, contentAlignment = if (rightHand) androidx.compose.ui.AbsoluteAlignment.CenterRight else androidx.compose.ui.AbsoluteAlignment.CenterLeft) {
-        Box(Modifier.width(128.dp).height(36.dp), contentAlignment = Alignment.Center) {
-            val col = remember(night) { com.mtgofa.muslem.quran.OrnamentColors(night) }
-            var box by remember { mutableStateOf<android.graphics.RectF?>(null) }
+        Box(Modifier.width(66.dp).height(24.dp)) {
+            var body by remember { mutableStateOf<android.graphics.RectF?>(null) }
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
-                drawIntoCanvas { c ->
-                    box = com.mtgofa.muslem.quran.Ornaments.pageBadge(c.nativeCanvas, size.width, size.height, rightHand, col)
-                }
+                drawIntoCanvas { c -> body = com.mtgofa.muslem.quran.Ornaments.pageBadge(c.nativeCanvas, size.width, size.height, rightHand) }
             }
             val density = androidx.compose.ui.platform.LocalDensity.current
-            val b = box
-            if (b != null) Box(
-                Modifier
-                    .align(androidx.compose.ui.AbsoluteAlignment.TopLeft)
-                    .absolutePadding(left = with(density) { b.left.toDp() }, top = with(density) { b.top.toDp() })
-                    .size(with(density) { b.width().toDp() }, with(density) { b.height().toDp() }),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    arabicDigits(page), style = MaterialTheme.typography.labelLarge, fontSize = 13.sp,
-                    color = if (night) Color(0xFFE9E6DC) else Color(0xFF2F7039),
-                )
+            body?.let { b ->
+                Box(
+                    Modifier
+                        .align(androidx.compose.ui.AbsoluteAlignment.TopLeft)
+                        .absolutePadding(left = with(density) { b.left.toDp() }, top = with(density) { b.top.toDp() })
+                        .size(with(density) { b.width().toDp() }, with(density) { b.height().toDp() }),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        arabicDigits(page), fontSize = 11.sp, fontFamily = Plex,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                        color = Color(com.mtgofa.muslem.quran.Ornaments.BADGE_INK),
+                        style = androidx.compose.ui.text.TextStyle(
+                            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false),
+                            lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                                androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center,
+                                androidx.compose.ui.text.style.LineHeightStyle.Trim.Both,
+                            ),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ============================================================================ tajweed
+
+/** Tajweed colours on/off and what each colour means (colours as printed by the page fonts). */
+private val TAJWEED_KEY = listOf(
+    0xFFB50000 to "مدّ ٦ حركات لزوماً",
+    0xFFF40000 to "مدّ واجب ٤ أو ٥ حركات",
+    0xFFFF7B00 to "مدّ ٢ أو ٤ أو ٦ جوازاً",
+    0xFFCE9E00 to "مدّ حركتان",
+    0xFF09B000 to "إخفاء، ومواقع الغُنّة (حركتان)",
+    0xFFA5A5A5 to "إدغام، وما لا يُلفَظ",
+    0xFF3F48E6 to "تفخيم",
+    0xFF2FADFF to "قلقلة",
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TajweedSheet(onDismiss: () -> Unit) {
+    val changes by Settings.changes.collectAsState()
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
+        key(changes) {
+            Column(Modifier.navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("ألوان التجويد", style = MaterialTheme.typography.headlineSmall)
+                        Text("تلوين الحروف حسب أحكام التلاوة", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                    }
+                    androidx.compose.material3.Switch(
+                        Settings.tajweed, { Settings.tajweed = it },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = Palette.Emerald),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Palette.Paper, RoundedCornerShape(18.dp))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
+                    TAJWEED_KEY.forEach { (color, label) ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(22.dp).background(Color(color), RoundedCornerShape(7.dp)))
+                            Spacer(Modifier.width(14.dp))
+                            Text(label, style = MaterialTheme.typography.bodyLarge, color = if (Settings.tajweed) Palette.Ink else Palette.Muted)
+                        }
+                    }
+                }
             }
         }
     }

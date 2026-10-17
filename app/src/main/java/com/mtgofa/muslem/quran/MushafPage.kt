@@ -142,9 +142,8 @@ fun MushafPageView(
         LaunchedEffect(page, style, w, h) {
             layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), w, h, style) }
         }
-        val night = style == MushafStyle.DARK_TAJWEED || style == MushafStyle.DARK_PLAIN
-        val ink = if (night) Color(0xFFE9E6DC) else Color(0xFF1A1A1A)
-        val hl = if (night) Color(0x3355C9A0) else Color(0x2A0F7A62)
+        val ink = Color(0xFF1A1A1A)
+        val hl = Color(0x2A0F7A62)
         val lay = layout ?: return@BoxWithConstraints
 
         Canvas(
@@ -172,9 +171,8 @@ fun MushafPageView(
                 }
                 // ---- surah title bands
                 val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.headerSize; color = ink.toArgb() }
-                val oc = OrnamentColors(night)
                 for (f in lay.frames) {
-                    Ornaments.surahFrame(nc, f.rect, oc)
+                    Ornaments.surahFrame(nc, f.rect)
                     nc.drawText(f.title, f.titleX, f.baseline, tp)
                 }
                 // ---- basmala
