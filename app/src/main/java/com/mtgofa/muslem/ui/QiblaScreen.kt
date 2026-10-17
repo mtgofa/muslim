@@ -15,6 +15,10 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.TextStyle
@@ -95,10 +99,11 @@ private fun angleDiff(a: Float, b: Float): Float {
  * smoothed. Sensors are only registered while the screen is shown.
  */
 @Composable
-private fun rememberHeading(): Pair<Float?, Boolean> {
+private fun rememberHeading(): Pair<Float?, Int> {
     val ctx = LocalContext.current
     var heading by remember { mutableStateOf<Float?>(null) }
-    var unreliable by remember { mutableStateOf(false) }
+    // SensorManager accuracy: -1 = not reported yet, 0 unreliable … 3 high
+    var accuracy by remember { mutableStateOf(-1) }
     DisposableEffect(Unit) {
         val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val declination = GeomagneticField(Settings.lat.toFloat(), Settings.lng.toFloat(), 0f, System.currentTimeMillis()).declination
@@ -111,6 +116,7 @@ private fun rememberHeading(): Pair<Float?, Boolean> {
             // low-pass that respects the wrap at 0/360
             heading = if (prev == null) raw else (prev + angleDiff(raw, prev) * 0.35f + 360f) % 360f
         }
+        val setAccuracy: (Int) -> Unit = { accuracy = it }
         val listener = object : SensorEventListener {
             override fun onSensorChanged(e: SensorEvent) {
                 when (e.sensor.type) {
@@ -127,7 +133,7 @@ private fun rememberHeading(): Pair<Float?, Boolean> {
             }
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
                 if (sensor.type == Sensor.TYPE_MAGNETIC_FIELD || sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
-                    unreliable = accuracy <= SensorManager.SENSOR_STATUS_ACCURACY_LOW
+                    setAccuracy(accuracy)
                 }
             }
         }
@@ -140,35 +146,43 @@ private fun rememberHeading(): Pair<Float?, Boolean> {
         sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_NORMAL) }
         onDispose { sm.unregisterListener(listener) }
     }
-    return heading to unreliable
+    return heading to accuracy
 }
 
 @Composable
 fun QiblaScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val qibla = remember { qiblaBearing(Settings.lat, Settings.lng) }
-    val (heading, unreliable) = rememberHeading()
+    val (heading, accuracy) = rememberHeading()
+    // low only once the sensor has said so; some phones never report accuracy at all
+    val unreliable = accuracy in 0..SensorManager.SENSOR_STATUS_ACCURACY_LOW
     // where the Qibla is relative to the top of the phone: 0 = straight ahead
     val rel = heading?.let { angleDiff(qibla, it) }
 
-    // the compass needs a few seconds to settle after it starts: until the heading has held
-    // steady for a moment (and the sensor reports usable accuracy) we only show "calibrating"
+    // The compass needs a few seconds after it starts before its direction can be trusted.
+    // Until then the dial is dimmed and nothing is announced. It counts as settled once it has
+    // run for 2.5 s, the heading has held within 4° for 2 s, and the sensor reports at least
+    // medium accuracy (or never reports any). After 12 s we show it anyway, with a
+    // calibration hint, rather than wait forever.
     var settled by remember { mutableStateOf(false) }
-    // the loop below outlives this composition: read the live heading, not the first value
+    var steadiness by remember { mutableStateOf(0f) }
+    // the loop below outlives this composition: read live values, not the first ones
     val liveHeading by androidx.compose.runtime.rememberUpdatedState(heading)
+    val liveAccuracy by androidx.compose.runtime.rememberUpdatedState(accuracy)
     val recent = remember { ArrayDeque<Float>() }
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(1500)
-        val giveUpAt = System.currentTimeMillis() + 4500
+        val start = System.currentTimeMillis()
         while (!settled) {
-            if (System.currentTimeMillis() > giveUpAt && liveHeading != null) { settled = true; break }
-            val h = liveHeading
-            if (h != null) {
-                recent.addLast(h); if (recent.size > 6) recent.removeFirst()
-                val spread = recent.maxOf { abs(angleDiff(it, h)) }
-                if (recent.size == 6 && spread < 6f) settled = true
-            }
             kotlinx.coroutines.delay(250)
+            val h = liveHeading ?: continue
+            recent.addLast(h); if (recent.size > 8) recent.removeFirst()
+            val spread = recent.maxOf { abs(angleDiff(it, h)) }
+            if (spread >= 4f) { recent.clear(); recent.addLast(h) }
+            val goodSensor = liveAccuracy < 0 || liveAccuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM
+            val elapsed = System.currentTimeMillis() - start
+            steadiness = (recent.size / 8f).coerceAtMost(if (goodSensor) 1f else 0.85f)
+            if (elapsed > 2500 && recent.size == 8 && goodSensor) settled = true
+            if (elapsed > 12_000) settled = true
         }
     }
     val aligned = settled && rel != null && abs(rel) <= ALIGNED_DEG
@@ -192,7 +206,7 @@ fun QiblaScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(
             when {
-                heading == null || !settled -> "جاري ضبط البوصلة… انتظر قليلاً"
+                heading == null || !settled -> "لحظات… جاري ضبط البوصلة"
                 aligned -> "أنت في اتجاه القبلة"
                 rel!! > 0 -> "أدر الهاتف يميناً"
                 else -> "أدر الهاتف يساراً"
@@ -207,7 +221,8 @@ fun QiblaScreen(onBack: () -> Unit) {
         Spacer(Modifier.weight(1f))
         val measurer = rememberTextMeasurer()
         Box(Modifier.size(340.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
+            val dim by animateFloatAsState(if (settled) 1f else 0.3f, label = "dim")
+            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = dim }) {
                 val c = Offset(size.width / 2, size.height / 2)
                 val r = size.minDimension / 2 - 18.dp.toPx()
                 val gold = Color(0xFFE2C27A); val goldDeep = Color(0xFFB8893A)
@@ -285,16 +300,36 @@ fun QiblaScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.height(20.dp))
         if (!settled) {
-            androidx.compose.material3.CircularProgressIndicator(Modifier.size(34.dp), color = Color(0xFFE2C27A), strokeWidth = 3.dp)
-            Text("ضع الهاتف مسطّحاً وحرّكه قليلاً على شكل رقم ٨", style = MaterialTheme.typography.bodySmall, color = Color(0xB3FFFFFF), modifier = Modifier.padding(top = 8.dp))
-        } else if (rel != null) Text(
-            if (aligned) "✓" else "${arabicDigits(abs(rel).toInt())}°",
-            fontSize = 40.sp, fontWeight = FontWeight.Bold, fontFamily = Plex,
-            color = if (aligned) Color(0xFF7CF2A8) else Color.White,
-        )
+            Text("جاري التأكد من الاتجاه…", style = MaterialTheme.typography.titleMedium, color = Color.White)
+            Spacer(Modifier.height(10.dp))
+            androidx.compose.material3.LinearProgressIndicator(
+                { steadiness }, Modifier.width(200.dp).height(6.dp).clip(CircleShape),
+                color = Color(0xFFE2C27A), trackColor = Color(0x33FFFFFF),
+            )
+            Text(
+                if (unreliable) "حرّك الهاتف في الهواء على شكل رقم 8 عدة مرات" else "ثبّت الهاتف مسطّحاً ولا تحرّكه لحظات",
+                style = MaterialTheme.typography.bodySmall, color = Color(0xB3FFFFFF), modifier = Modifier.padding(top = 10.dp),
+            )
+        } else {
+            if (rel != null) Text(
+                if (aligned) "✓" else "${arabicDigits(abs(rel).toInt())}°",
+                fontSize = 40.sp, fontWeight = FontWeight.Bold, fontFamily = Plex,
+                color = if (aligned) Color(0xFF7CF2A8) else Color.White,
+            )
+            val (label, tint) = when {
+                accuracy == SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> "دقة البوصلة: عالية" to Color(0xFF7CF2A8)
+                accuracy == SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> "دقة البوصلة: متوسطة" to Color(0xFFF2D59B)
+                unreliable -> "دقة البوصلة: منخفضة" to Color(0xFFFF9E80)
+                else -> "البوصلة جاهزة" to Color(0xFF7CF2A8)
+            }
+            Text(
+                label, style = MaterialTheme.typography.labelLarge, color = tint,
+                modifier = Modifier.padding(top = 6.dp).clip(CircleShape).background(Color(0x26FFFFFF)).padding(horizontal = 14.dp, vertical = 6.dp),
+            )
+        }
         Spacer(Modifier.weight(1f))
         if (unreliable && settled) Text(
-            "البوصلة تحتاج معايرة: حرّك الهاتف على شكل رقم ٨، وابتعد عن المعادن والمغناطيس.",
+            "البوصلة تحتاج معايرة: حرّك الهاتف على شكل رقم 8، وابتعد عن المعادن والمغناطيس.",
             style = MaterialTheme.typography.bodySmall, color = Color(0xFFF2D59B), textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp),
         )
