@@ -94,95 +94,133 @@ private fun angleDiff(a: Float, b: Float): Float {
     return d
 }
 
+/** Directions the phone has faced during the calibration circle, in 15° steps. */
+private const val CIRCLE_BINS = 24
+
 /**
- * Phone heading from true north, from the rotation-vector sensor (or accelerometer + compass),
- * smoothed. Sensors are only registered while the screen is shown.
+ * Compass state: [heading] from true north, the sensor's [accuracy] (-1 not reported, 0..3),
+ * and how much of the calibration circle has been turned ([circle], 0..1).
+ */
+class Compass(val heading: Float?, val accuracy: Int, val circle: Float, val circleDone: Boolean)
+
+/**
+ * Phone heading from true north. Uses the fused rotation-vector sensor; while the phone is
+ * turned flat through a full circle it also learns the magnetic offset of the phone itself
+ * (the centre of the circle the field traces) and, once known, computes the heading from the
+ * corrected field, so one turn is enough even where the system calibration is slow.
+ * Sensors run only while the screen is shown.
  */
 @Composable
-private fun rememberHeading(): Pair<Float?, Int> {
+private fun rememberCompass(): Compass {
     val ctx = LocalContext.current
     var heading by remember { mutableStateOf<Float?>(null) }
-    // SensorManager accuracy: -1 = not reported yet, 0 unreliable … 3 high
     var accuracy by remember { mutableStateOf(-1) }
+    var circle by remember { mutableStateOf(0f) }
+    var circleDone by remember { mutableStateOf(false) }
     DisposableEffect(Unit) {
         val sm = ctx.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val declination = GeomagneticField(Settings.lat.toFloat(), Settings.lng.toFloat(), 0f, System.currentTimeMillis()).declination
         val rot = FloatArray(9); val orient = FloatArray(3)
-        val grav = FloatArray(3); val mag = FloatArray(3)
+        val grav = FloatArray(3); val mag = FloatArray(3); val fixed = FloatArray(3)
         var haveGrav = false; var haveMag = false
+        val hasRv = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR) != null
+        // calibration circle
+        val seen = BooleanArray(CIRCLE_BINS)
+        var minX = Float.MAX_VALUE; var maxX = -Float.MAX_VALUE; var minY = Float.MAX_VALUE; var maxY = -Float.MAX_VALUE
+        var offX = 0f; var offY = 0f; var useOwn = false
+
         fun publish(azimuthRad: Float) {
             val raw = (Math.toDegrees(azimuthRad.toDouble()).toFloat() + declination + 360f) % 360f
             val prev = heading
             // low-pass that respects the wrap at 0/360
             heading = if (prev == null) raw else (prev + angleDiff(raw, prev) * 0.35f + 360f) % 360f
+            if (!circleDone) {
+                seen[(raw / (360f / CIRCLE_BINS)).toInt().coerceIn(0, CIRCLE_BINS - 1)] = true
+                val n = seen.count { it }
+                circle = n / CIRCLE_BINS.toFloat()
+                // a circle covering ~330° with a real spread of field readings: learn the offset
+                if (n >= CIRCLE_BINS - 2 && maxX - minX > 10f && maxY - minY > 10f) {
+                    offX = (maxX + minX) / 2f; offY = (maxY + minY) / 2f
+                    useOwn = accuracy in 0..SensorManager.SENSOR_STATUS_ACCURACY_LOW || !hasRv
+                    circleDone = true
+                }
+            }
         }
-        val setAccuracy: (Int) -> Unit = { accuracy = it }
         val listener = object : SensorEventListener {
             override fun onSensorChanged(e: SensorEvent) {
                 when (e.sensor.type) {
-                    Sensor.TYPE_ROTATION_VECTOR -> {
+                    Sensor.TYPE_ROTATION_VECTOR -> if (!useOwn) {
                         SensorManager.getRotationMatrixFromVector(rot, e.values)
                         SensorManager.getOrientation(rot, orient); publish(orient[0])
                     }
                     Sensor.TYPE_ACCELEROMETER -> { e.values.copyInto(grav, endIndex = 3); haveGrav = true }
-                    Sensor.TYPE_MAGNETIC_FIELD -> { e.values.copyInto(mag, endIndex = 3); haveMag = true }
+                    Sensor.TYPE_MAGNETIC_FIELD -> {
+                        e.values.copyInto(mag, endIndex = 3); haveMag = true
+                        // only while lying flat does the field trace a circle in x/y
+                        if (haveGrav && grav[2] > 8.5f) {
+                            minX = minOf(minX, mag[0]); maxX = maxOf(maxX, mag[0])
+                            minY = minOf(minY, mag[1]); maxY = maxOf(maxY, mag[1])
+                        }
+                    }
                 }
-                if (e.sensor.type != Sensor.TYPE_ROTATION_VECTOR && haveGrav && haveMag &&
-                    SensorManager.getRotationMatrix(rot, null, grav, mag)
-                ) { SensorManager.getOrientation(rot, orient); publish(orient[0]) }
+                val own = useOwn || !hasRv
+                if (own && e.sensor.type != Sensor.TYPE_ROTATION_VECTOR && haveGrav && haveMag) {
+                    fixed[0] = mag[0] - offX; fixed[1] = mag[1] - offY; fixed[2] = mag[2]
+                    if (SensorManager.getRotationMatrix(rot, null, grav, fixed)) { SensorManager.getOrientation(rot, orient); publish(orient[0]) }
+                }
             }
-            override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+            override fun onAccuracyChanged(sensor: Sensor, a: Int) {
                 if (sensor.type == Sensor.TYPE_MAGNETIC_FIELD || sensor.type == Sensor.TYPE_ROTATION_VECTOR) {
-                    setAccuracy(accuracy)
+                    accuracy = a
+                    // the system calibration caught up: go back to the smoother fused sensor
+                    if (a >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM && hasRv) useOwn = false
                 }
             }
         }
-        val rv = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-        if (rv != null) sm.registerListener(listener, rv, SensorManager.SENSOR_DELAY_GAME)
-        else {
-            sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
-            sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
-        }
-        sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
+        sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
+        sm.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)?.let { sm.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
         onDispose { sm.unregisterListener(listener) }
     }
-    return heading to accuracy
+    return Compass(heading, accuracy, circle, circleDone)
 }
 
 @Composable
 fun QiblaScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val qibla = remember { qiblaBearing(Settings.lat, Settings.lng) }
-    val (heading, accuracy) = rememberHeading()
+    val compass = rememberCompass()
+    val heading = compass.heading
+    val accuracy = compass.accuracy
     // low only once the sensor has said so; some phones never report accuracy at all
-    val unreliable = accuracy in 0..SensorManager.SENSOR_STATUS_ACCURACY_LOW
+    // a completed calibration circle corrects the reading even if the system still says "low"
+    val unreliable = accuracy in 0..SensorManager.SENSOR_STATUS_ACCURACY_LOW && !compass.circleDone
     // where the Qibla is relative to the top of the phone: 0 = straight ahead
     val rel = heading?.let { angleDiff(qibla, it) }
 
-    // The compass needs a few seconds after it starts before its direction can be trusted.
-    // Until then the dial is dimmed and nothing is announced. It counts as settled once it has
-    // run for 2.5 s, the heading has held within 4° for 2 s, and the sensor reports at least
-    // medium accuracy (or never reports any). After 12 s we show it anyway, with a
-    // calibration hint, rather than wait forever.
+    // The compass needs a moment after it starts before its direction can be trusted. Until
+    // then the dial is dimmed and nothing is announced. It is ready once it has run 2.5 s, held
+    // within 4° for 2 s and the sensor reports at least medium accuracy (or never reports) —
+    // or as soon as the user has turned the phone through a full circle, which calibrates it.
     var settled by remember { mutableStateOf(false) }
-    var steadiness by remember { mutableStateOf(0f) }
-    // the loop below outlives this composition: read live values, not the first ones
+    var askCircle by remember { mutableStateOf(false) }
     val liveHeading by androidx.compose.runtime.rememberUpdatedState(heading)
     val liveAccuracy by androidx.compose.runtime.rememberUpdatedState(accuracy)
+    val liveCircle by androidx.compose.runtime.rememberUpdatedState(compass.circleDone)
     val recent = remember { ArrayDeque<Float>() }
     LaunchedEffect(Unit) {
         val start = System.currentTimeMillis()
         while (!settled) {
             kotlinx.coroutines.delay(250)
+            if (liveCircle) { settled = true; break }
             val h = liveHeading ?: continue
             recent.addLast(h); if (recent.size > 8) recent.removeFirst()
-            val spread = recent.maxOf { abs(angleDiff(it, h)) }
-            if (spread >= 4f) { recent.clear(); recent.addLast(h) }
+            if (recent.maxOf { abs(angleDiff(it, h)) } >= 4f) { recent.clear(); recent.addLast(h) }
             val goodSensor = liveAccuracy < 0 || liveAccuracy >= SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM
             val elapsed = System.currentTimeMillis() - start
-            steadiness = (recent.size / 8f).coerceAtMost(if (goodSensor) 1f else 0.85f)
             if (elapsed > 2500 && recent.size == 8 && goodSensor) settled = true
-            if (elapsed > 12_000) settled = true
+            // not trustworthy yet: ask for the calibration circle
+            if (elapsed > 3000) askCircle = true
         }
     }
     val aligned = settled && rel != null && abs(rel) <= ALIGNED_DEG
@@ -296,19 +334,27 @@ fun QiblaScreen(onBack: () -> Unit) {
                     }
                 }
                 drawPath(pointer, glow)
+                if (!settled && askCircle) {
+                    val rr = r + 10.dp.toPx()
+                    drawCircle(Color(0x33FFFFFF), rr, c, style = Stroke(6.dp.toPx()))
+                    drawArc(
+                        Color(0xFFE2C27A), -90f, 360f * compass.circle, false,
+                        topLeft = Offset(c.x - rr, c.y - rr), size = Size(rr * 2, rr * 2),
+                        style = Stroke(6.dp.toPx(), cap = StrokeCap.Round),
+                    )
+                }
             }
         }
         Spacer(Modifier.height(20.dp))
         if (!settled) {
-            Text("جاري التأكد من الاتجاه…", style = MaterialTheme.typography.titleMedium, color = Color.White)
-            Spacer(Modifier.height(10.dp))
-            androidx.compose.material3.LinearProgressIndicator(
-                { steadiness }, Modifier.width(200.dp).height(6.dp).clip(CircleShape),
-                color = Color(0xFFE2C27A), trackColor = Color(0x33FFFFFF),
-            )
             Text(
-                if (unreliable) "حرّك الهاتف في الهواء على شكل رقم 8 عدة مرات" else "ثبّت الهاتف مسطّحاً ولا تحرّكه لحظات",
-                style = MaterialTheme.typography.bodySmall, color = Color(0xB3FFFFFF), modifier = Modifier.padding(top = 10.dp),
+                if (askCircle) "ضع الهاتف مسطّحاً ولفّه دورة كاملة ببطء" else "جاري التأكد من الاتجاه…",
+                style = MaterialTheme.typography.titleMedium, color = Color.White, textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                if (askCircle) "الحلقة الذهبية حول البوصلة تكتمل مع اللف" else "ثبّت الهاتف مسطّحاً لحظات",
+                style = MaterialTheme.typography.bodySmall, color = Color(0xB3FFFFFF),
             )
         } else {
             if (rel != null) Text(
@@ -318,6 +364,7 @@ fun QiblaScreen(onBack: () -> Unit) {
             )
             val (label, tint) = when {
                 accuracy == SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> "دقة البوصلة: عالية" to Color(0xFF7CF2A8)
+                compass.circleDone -> "تمت معايرة البوصلة" to Color(0xFF7CF2A8)
                 accuracy == SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> "دقة البوصلة: متوسطة" to Color(0xFFF2D59B)
                 unreliable -> "دقة البوصلة: منخفضة" to Color(0xFFFF9E80)
                 else -> "البوصلة جاهزة" to Color(0xFF7CF2A8)
@@ -329,7 +376,7 @@ fun QiblaScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.weight(1f))
         if (unreliable && settled) Text(
-            "البوصلة تحتاج معايرة: حرّك الهاتف على شكل رقم 8، وابتعد عن المعادن والمغناطيس.",
+            "الدقة منخفضة: ضع الهاتف مسطّحاً ولفّه دورة كاملة، وابتعد عن المعادن والمغناطيس.",
             style = MaterialTheme.typography.bodySmall, color = Color(0xFFF2D59B), textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 8.dp),
         )
