@@ -114,13 +114,21 @@ fun HomeScreen(
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
-            Header(
+            // the previous prayer (possibly yesterday's Isha) to measure progress toward the next
+            val prev = remember(today, changes, next) {
+                val all = Scheduler.times(today.minusDays(1)).times.values + Scheduler.times(today).times.values
+                all.filter { !it.isAfter(now) }.maxOrNull() ?: now.minusHours(6)
+            }
+            val total = Duration.between(prev, nextAt).seconds.coerceAtLeast(1)
+            PrayerHeader(
+                period = SkyPeriod.of(Scheduler.currentPrayer(now)),
                 location = Settings.locationName,
-                date = gregorian(today),
                 hijri = Hijri.of(today).toString(),
+                date = gregorian(today),
                 nextName = if (next == Prayer.SUNRISE) "الشروق" else next.label(nextAt.toLocalDate()),
-                nextAt = nextAt,
+                nextTime = "${clock(nextAt)} ${ampm(nextAt)}",
                 remaining = countdown(Duration.between(now, nextAt)),
+                progress = 1f - Duration.between(now, nextAt).seconds.toFloat() / total,
                 onLocation = onLocation,
             )
         }
@@ -165,61 +173,6 @@ fun HomeScreen(
                     }
                     Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Header(
-    location: String, date: String, hijri: String, nextName: String, nextAt: ZonedDateTime, remaining: String,
-    onLocation: () -> Unit,
-) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF14936F), Color(0xFF0A5A48))))
-            .statusBarsPadding()
-            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 26.dp),
-    ) {
-        Column {
-            Row(
-                Modifier
-                    .clip(CircleShape)
-                    .clickable(onClick = onLocation)
-                    .background(Color(0x22FFFFFF))
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Rounded.LocationOn, null, tint = Color.White, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(location, color = Color.White, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-            }
-            Spacer(Modifier.height(18.dp))
-            Text(hijri, color = Color.White, style = MaterialTheme.typography.titleLarge)
-            Text(date, color = Color(0xCCFFFFFF), style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(22.dp))
-            Text("الصلاة القادمة", color = Color(0xCCFFFFFF), style = MaterialTheme.typography.labelLarge)
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(nextName, color = Color.White, style = MaterialTheme.typography.displayMedium)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "${clock(nextAt)} ${ampm(nextAt)}",
-                    color = Color(0xFFF2D59B), style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
-            }
-            Spacer(Modifier.height(6.dp))
-            Row(
-                Modifier
-                    .background(Color(0x26FFFFFF), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("بعد", color = Color(0xCCFFFFFF), style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.width(8.dp))
-                Text(remaining, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = Plex)
             }
         }
     }
