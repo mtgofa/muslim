@@ -217,9 +217,10 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                         .windowInsetsPadding(WindowInsets.displayCutout)
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
-                    Row(Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 8.dp, vertical = 2.dp)) {
-                        Text("سورة $suraName", color = inkSoft, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
-                        Text("الجزء ${JUZ_NAMES[QuranDb.juzOfPage(p) - 1]}", color = inkSoft, style = MaterialTheme.typography.labelMedium)
+                    // juz on the right, surah name on the left, as printed
+                    Row(Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp, vertical = 2.dp)) {
+                        Text("الجزء ${JUZ_NAMES[QuranDb.juzOfPage(p) - 1]}", color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+                        Text(suraName, color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge)
                     }
                     val hl = if (sheet == "ayah" && selected != null) selected else if (play.active && play.current != null) play.current else selected
                     MushafPageView(

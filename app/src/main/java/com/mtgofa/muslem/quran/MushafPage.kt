@@ -39,8 +39,9 @@ class PageLayout(
     val headerFont: Typeface,
     val words: List<Placed>,
     val frames: List<Frame>,
-    /** basmala runs: text (visual order), x, baseline */
+    /** basmala runs: text (logical order, drawn right-to-left), x, baseline */
     val basmalas: List<Triple<String, Float, Float>>,
+    val basmalaSize: Float,
 )
 
 private const val LINES = 15
@@ -48,8 +49,10 @@ private const val LINES = 15
 private const val TITLE_SIZE = 0.38f
 /** Extra stroke weight for the page text, as a fraction of the text size. */
 private const val WEIGHT = 0.0025f
-private const val BASMALA_SIZE = 0.37f
-private const val BASMALA_VISUAL = "齃𧻓𥳐𥉉"
+/** Basmala width as a fraction of the page width. */
+private const val BASMALA_WIDTH = 0.62f
+/** The long-form basmala in the title font, whose colour layers carry the tajweed. */
+private const val BASMALA_WORDS = "\uFE9D\uFEA1\uFEA5\uFEA9"
 
 /** Measure and place every glyph of [page] into a [w] x [h] pixel box. */
 fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle): PageLayout {
@@ -81,6 +84,9 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
     val frames = ArrayList<Frame>()
     val basmalas = ArrayList<Triple<String, Float, Float>>()
     val hp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = headerFont }
+    val bp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = headerFont; textSize = 100f }
+    val basmalaSize = 100f * (w * BASMALA_WIDTH) / adv(BASMALA_WORDS, bp)
+    bp.textSize = basmalaSize
 
     for (line in data.lines) {
         val y0 = top + (line.number - 1) * lh
@@ -96,9 +102,9 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
                 frames += Frame(rect, code, w / 2f - ink.exactCenterX(), rect.centerY() - ink.exactCenterY())
             }
             GlyphType.BASMALA -> {
-                hp.textSize = lh * BASMALA_SIZE
-                val ink = android.graphics.Rect().also { hp.getTextBounds(BASMALA_VISUAL, 0, BASMALA_VISUAL.length, it) }
-                basmalas += Triple(BASMALA_VISUAL, w / 2f - ink.exactCenterX(), cy - ink.exactCenterY())
+                val ink = android.graphics.Rect().also { bp.getTextBounds(BASMALA_WORDS, 0, BASMALA_WORDS.length, it) }
+                val bw = adv(BASMALA_WORDS, bp)
+                basmalas += Triple(BASMALA_WORDS, (w - bw) / 2f, cy - ink.exactCenterY())
             }
             else -> {
                 val adv100 = natural[line.number] ?: continue
@@ -119,7 +125,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
             }
         }
     }
-    return PageLayout(data.page, size, lh * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas)
+    return PageLayout(data.page, size, lh * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas, basmalaSize)
 }
 
 /**
@@ -178,8 +184,8 @@ fun MushafPageView(
                     nc.drawText(f.title, f.titleX, f.baseline, tp)
                 }
                 // ---- basmala
-                tp.textSize = lay.headerSize * (BASMALA_SIZE / TITLE_SIZE)
-                for ((t, x, y) in lay.basmalas) nc.drawText(t, x, y, tp)
+                val bpaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.basmalaSize; color = ink.toArgb() }
+                for ((t, x, y) in lay.basmalas) nc.drawTextRun(t, 0, t.length, 0, t.length, x, y, true, bpaint)
                 // ---- words
                 val wp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.pageFont; textSize = lay.textSize; color = ink.toArgb() }
                 // the printed page has heavier strokes than the raw outlines; spreading each word
