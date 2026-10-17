@@ -162,6 +162,10 @@ object Settings {
     var tasbeehVibrate: Boolean
         get() = sp.getBoolean("tsb_vibrate", true)
         set(v) = edit { putBoolean("tsb_vibrate", v) }
+    /** 1 = big button (default), 0 = bead ring */
+    var tasbeehStyle: Int
+        get() = sp.getInt("tsb_style", 1)
+        set(v) = edit { putInt("tsb_style", v) }
     /** 0 = no sound, 1 = at the end of each round, 2 = every 100 */
     var tasbeehSound: Int
         get() = sp.getInt("tsb_sound", 1)

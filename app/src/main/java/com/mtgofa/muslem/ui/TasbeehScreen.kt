@@ -8,6 +8,7 @@ import android.os.Vibrator
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -80,6 +82,7 @@ fun TasbeehScreen(onBack: () -> Unit) {
     var count by remember(phraseId) { mutableIntStateOf(Settings.tasbeehCount(phraseId)) }
     var total by remember { mutableLongStateOf(Settings.tasbeehTotal) }
     var confirmReset by remember { mutableStateOf(false) }
+    var style by remember { mutableIntStateOf(Settings.tasbeehStyle) }
     val tone = remember { runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull() }
     DisposableEffect(Unit) { onDispose { tone?.release() } }
     val vibrator = remember { ctx.getSystemService(Vibrator::class.java) }
@@ -127,13 +130,16 @@ fun TasbeehScreen(onBack: () -> Unit) {
                 )
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+            Segmented(listOf(1, 0), style, { if (it == 1) "زر" else "سبحة" }) { style = it; Settings.tasbeehStyle = it }
+        }
         Text(
             phrase.text, textAlign = TextAlign.Center, fontSize = if (phrase.text.length > 40) 20.sp else 26.sp,
             lineHeight = 38.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Palette.EmeraldDark,
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         )
-        Spacer(Modifier.weight(1f))
+        if (style == 0) {
+            Spacer(Modifier.weight(1f))
 
         // the misbaha: a ring of beads that fill with each count, tap anywhere on it
         Box(
@@ -186,7 +192,23 @@ fun TasbeehScreen(onBack: () -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Text("اضغط على السبحة للتسبيح", style = MaterialTheme.typography.bodySmall, color = Palette.Muted, modifier = Modifier.align(Alignment.CenterHorizontally))
-        Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
+        } else {
+            // button style: big and low on the screen, within reach of the thumb
+            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 18.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // in RTL the first child sits on the right: keep a matching gap there so the
+                // button stays centred, and the target box lands on its left
+                Spacer(Modifier.width(68.dp))
+                TasbeehButton(count, progress, onTap = ::tap)
+                Spacer(Modifier.width(10.dp))
+                TargetBox(target, Modifier.width(58.dp))
+            }
+        }
 
         // options
         Row(
@@ -233,5 +255,69 @@ private fun Option(icon: ImageVector, title: String, state: String, on: Boolean,
         Spacer(Modifier.height(4.dp))
         Text(title, style = MaterialTheme.typography.labelLarge)
         Text(state, style = MaterialTheme.typography.bodySmall, color = Palette.Muted, maxLines = 1)
+    }
+}
+
+/** The big tap target: an eight-point star frame with the count in the middle. */
+@Composable
+private fun TasbeehButton(count: Int, progress: Float, onTap: () -> Unit) {
+    Box(
+        Modifier
+            .size(224.dp)
+            .clip(CircleShape)
+            .clickable(remember { MutableInteractionSource() }, ripple(color = Palette.Gold)) { onTap() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val c = Offset(size.width / 2, size.height / 2)
+            val r = size.minDimension / 2 - 4.dp.toPx()
+            fun star(rr: Float, rot: Double): androidx.compose.ui.graphics.Path = androidx.compose.ui.graphics.Path().apply {
+                for (i in 0 until 16) {
+                    val a = rot + i * PI / 8
+                    val rad = if (i % 2 == 0) rr else rr * 0.86f
+                    val x = c.x + (rad * cos(a)).toFloat(); val y = c.y + (rad * sin(a)).toFloat()
+                    if (i == 0) moveTo(x, y) else lineTo(x, y)
+                }
+                close()
+            }
+            // gold star frame, emerald star, then the face
+            drawPath(star(r, -PI / 2), Brush.linearGradient(listOf(Color(0xFFE7CF95), Color(0xFFB8893A))))
+            drawPath(star(r * 0.93f, -PI / 2), Brush.linearGradient(listOf(Color(0xFF1E7D57), Color(0xFF0B3A2C))))
+            drawPath(star(r * 0.86f, -PI / 2), Color(0xFFC49A45), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
+            val face = r * 0.66f
+            drawCircle(Brush.radialGradient(listOf(Color(0xFF2A8A63), Color(0xFF0E4A37)), center = c, radius = face), radius = face, center = c)
+            // progress of the current round around the face
+            val ring = face + 7.dp.toPx()
+            drawArc(
+                Color(0x33FFFFFF), 0f, 360f, false, topLeft = Offset(c.x - ring, c.y - ring), size = Size(ring * 2, ring * 2),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx()),
+            )
+            drawArc(
+                Color(0xFFF2D59B), -90f, 360f * progress, false, topLeft = Offset(c.x - ring, c.y - ring), size = Size(ring * 2, ring * 2),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
+            )
+            // small gold stars at the eight points
+            for (i in 0 until 8) {
+                val a = -PI / 2 + i * PI / 4
+                drawCircle(Color(0xFFF2D59B), radius = 2.5.dp.toPx(), center = Offset(c.x + (r * 0.8f * cos(a)).toFloat(), c.y + (r * 0.8f * sin(a)).toFloat()))
+            }
+        }
+        Text(count.toString(), fontSize = 58.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Color.White)
+    }
+}
+
+/** Small box beside the button with the count of one round. */
+@Composable
+private fun TargetBox(target: Int, modifier: Modifier) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Palette.GoldSoft)
+            .border(1.5.dp, Palette.Gold, RoundedCornerShape(16.dp))
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(if (target > 0) target.toString() else "∞", fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Color(0xFF8A5E14))
+        Text("العدد", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8A5E14))
     }
 }
