@@ -89,6 +89,12 @@ object QuranDb {
             if (c.moveToFirst()) c.getString(0) else ""
         }
 
+    /** Text of every ayah of a surah, in order. */
+    fun ayahTexts(sura: Int): List<String> =
+        db.rawQuery("SELECT text FROM ayah WHERE sura=? ORDER BY ayah", arrayOf("$sura")).use { c ->
+            buildList { while (c.moveToNext()) add(c.getString(0)) }
+        }
+
     /** Ayahs of a page in reading order. */
     fun ayahsOnPage(page: Int): List<AyahRef> = page(page).lines.flatMap { it.glyphs }
         .filter { it.type == GlyphType.END }.map { AyahRef(it.sura, it.ayah) }

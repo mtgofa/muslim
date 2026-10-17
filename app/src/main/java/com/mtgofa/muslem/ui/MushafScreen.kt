@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.Palette as PaletteIcon
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Repeat
@@ -505,19 +506,88 @@ private fun Line(title: String, trailing: @Composable () -> Unit) {
     }
 }
 
-/** Surah stepper + ayah stepper. */
+/** Surah and ayah as two select fields; each opens a scrollable list. */
 @Composable
 private fun AyahPicker(sura: Int, ayah: Int, onChange: (Int, Int) -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Column(Modifier.weight(1f)) {
-            Text("سورة ${QuranDb.surah(sura).name}", style = MaterialTheme.typography.titleSmall, maxLines = 1)
-            Stepper(sura, 1..114, modifier = Modifier.fillMaxWidth(), fill = true, format = { arabicDigits(it) }) { onChange(it, 1) }
+    var open by remember { mutableStateOf<String?>(null) }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        SelectField("سورة ${QuranDb.surah(sura).name}", Modifier.weight(1f)) { open = "sura" }
+        SelectField("آية ${arabicDigits(ayah)}", Modifier.weight(1f)) { open = "ayah" }
+    }
+    when (open) {
+        "sura" -> PickerDialog("اختر السورة", QuranDb.surahs.size, sura - 1, onDismiss = { open = null }) { i, selected ->
+            val s = QuranDb.surahs[i]
+            PickerRow(selected, { onChange(s.id, 1); open = null }) {
+                Text("سورة ${s.name}", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text(arabicDigits(s.id), style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            }
         }
-        Column(Modifier.weight(1f)) {
-            Text("آية", style = MaterialTheme.typography.titleSmall)
-            Stepper(ayah, 1..QuranDb.surah(sura).ayahs, modifier = Modifier.fillMaxWidth(), fill = true, format = { arabicDigits(it) }) { onChange(sura, it) }
+        "ayah" -> {
+            val texts = remember(sura) { QuranDb.ayahTexts(sura) }
+            PickerDialog("سورة ${QuranDb.surah(sura).name}", texts.size, ayah - 1, onDismiss = { open = null }) { i, selected ->
+                PickerRow(selected, { onChange(sura, i + 1); open = null }) {
+                    Text(
+                        texts[i].split(' ').take(5).joinToString(" ") + " …",
+                        style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(arabicDigits(i + 1), style = MaterialTheme.typography.labelLarge, color = Palette.Emerald)
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun SelectField(text: String, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Icon(Icons.Rounded.KeyboardArrowDown, null, tint = Palette.Muted)
+    }
+}
+
+@Composable
+private fun PickerDialog(
+    title: String, count: Int, current: Int, onDismiss: () -> Unit,
+    row: @Composable (index: Int, selected: Boolean) -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.75f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(vertical = 12.dp),
+        ) {
+            Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+            val state = rememberLazyListState((current - 3).coerceAtLeast(0))
+            LazyColumn(state = state) {
+                items(count) { i -> row(i, i == current) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PickerRow(selected: Boolean, onClick: () -> Unit, content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(if (selected) Palette.EmeraldSoft else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content,
+    )
 }
 
 // ============================================================================ reciter
