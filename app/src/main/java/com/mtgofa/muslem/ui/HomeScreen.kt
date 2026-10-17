@@ -225,6 +225,14 @@ fun HomeScreen(
                 }
             }
         }
+        item {
+            Text(
+                "الإصدار \u2066${com.mtgofa.muslem.BuildConfig.VERSION_NAME}\u2069",
+                style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 8.dp),
+            )
+        }
     }
 }
 

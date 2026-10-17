@@ -8,6 +8,11 @@ import android.os.Vibrator
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -102,7 +107,7 @@ fun TasbeehScreen(onBack: (() -> Unit)? = null) {
         val hundred = count % 100 == 0
         if (Settings.tasbeehVibrate) {
             if (roundDone || hundred) {
-                if (Build.VERSION.SDK_INT >= 26) vibrator?.vibrate(VibrationEffect.createOneShot(220, VibrationEffect.DEFAULT_AMPLITUDE))
+                com.mtgofa.muslem.data.Haptics.buzz(ctx, 220)
             } else view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
         }
         when (Settings.tasbeehSound) {
@@ -141,60 +146,13 @@ fun TasbeehScreen(onBack: (() -> Unit)? = null) {
             modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         )
         if (style == 0) {
-            Spacer(Modifier.weight(1f))
-
-        // the misbaha: a ring of beads that fill with each count, tap anywhere on it
-        Box(
-            Modifier
-                .align(Alignment.CenterHorizontally)
-                .size(300.dp)
-                .clip(CircleShape)
-                .clickable(remember { MutableInteractionSource() }, ripple(color = Palette.Emerald)) { tap() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val c = Offset(size.width / 2, size.height / 2)
-                val r = size.minDimension / 2 - 18.dp.toPx()
-                drawCircle(Brush.radialGradient(listOf(Color(0xFFFFFFFF), Color(0xFFEFF6F1)), center = c, radius = r), radius = r - 18.dp.toPx(), center = c)
-                // thread
-                drawCircle(Color(0x33175E43), radius = r, center = c, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-                val filled = (progress * BEADS).toInt()
-                val bead = 9.5.dp.toPx()
-                for (i in 0 until BEADS) {
-                    // start at the top and go clockwise
-                    val a = -PI / 2 + i * 2 * PI / BEADS
-                    val p = Offset(c.x + (r * cos(a)).toFloat(), c.y + (r * sin(a)).toFloat())
-                    val on = i < filled
-                    drawCircle(
-                        Brush.radialGradient(
-                            if (on) listOf(Color(0xFFF6DDA0), Color(0xFFC49A45)) else listOf(Color(0xFFE7F1EA), Color(0xFFB9D3C3)),
-                            center = Offset(p.x - bead * 0.3f, p.y - bead * 0.3f), radius = bead * 1.4f,
-                        ),
-                        radius = bead, center = p,
-                    )
-                }
-                // the long "imam" bead at the bottom
-                val bottom = Offset(c.x, c.y + r + 2.dp.toPx())
-                drawRoundRect(
-                    Brush.verticalGradient(listOf(Color(0xFF2A7A59), Color(0xFF175E43)), startY = bottom.y, endY = bottom.y + 22.dp.toPx()),
-                    topLeft = Offset(bottom.x - 6.dp.toPx(), bottom.y), size = Size(12.dp.toPx(), 22.dp.toPx()),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()),
-                )
-            }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(count.toString(), fontSize = 64.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Palette.EmeraldDark)
-                if (target > 0) {
-                    Text(
-                        "${arabicDigits(inRound.takeIf { it > 0 || count == 0 } ?: ring)} من ${arabicDigits(target)}",
-                        style = MaterialTheme.typography.titleSmall, color = Palette.Muted,
-                    )
-                    Text("الدورة ${arabicDigits(round)}", style = MaterialTheme.typography.bodySmall, color = Palette.Gold)
-                } else Text("عدّ حرّ", style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
-            }
-        }
-        Spacer(Modifier.height(10.dp))
-        Text("اضغط على السبحة للتسبيح", style = MaterialTheme.typography.bodySmall, color = Palette.Muted, modifier = Modifier.align(Alignment.CenterHorizontally))
-            Spacer(Modifier.weight(1f))
+            // a string of large beads: a tap or a downward swipe moves one bead across
+            BeadString(count, Modifier.weight(1f).fillMaxWidth(), onCount = ::tap)
+            Text(
+                if (target > 0) "${arabicDigits(inRound.takeIf { it > 0 || count == 0 } ?: ring)} من ${arabicDigits(target)} · الدورة ${arabicDigits(round)}" else "عدّ حرّ",
+                style = MaterialTheme.typography.bodyMedium, color = Palette.Muted,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 6.dp),
+            )
         } else {
             // button style: big and low on the screen, within reach of the thumb
             Spacer(Modifier.weight(1f))
@@ -322,5 +280,94 @@ private fun TargetBox(target: Int, modifier: Modifier) {
     ) {
         Text(if (target > 0) target.toString() else "∞", fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Color(0xFF8A5E14))
         Text("العدد", style = MaterialTheme.typography.labelSmall, color = Color(0xFF8A5E14))
+    }
+}
+
+/**
+ * Beads strung on a curve across the screen. Counted beads gather at the bottom, the rest wait
+ * at the top; each count slides the next bead across the gap with a spring.
+ */
+@Composable
+private fun BeadString(count: Int, modifier: Modifier, onCount: () -> Unit) {
+    val anim = remember { androidx.compose.animation.core.Animatable(count.toFloat()) }
+    LaunchedEffect(count) {
+        if (kotlin.math.abs(anim.value - count) > 3) anim.snapTo(count - 1f)
+        anim.animateTo(count.toFloat(), androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 420f))
+    }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val stepPx = with(density) { 70.dp.toPx() }
+    var dragged by remember { mutableFloatStateOf(0f) }
+    Box(
+        modifier
+            .pointerInput(Unit) { detectTapGestures { onCount() } }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(onDragEnd = { dragged = 0f }) { change, dy ->
+                    change.consume()
+                    if (dy > 0) {
+                        dragged += dy
+                        while (dragged >= stepPx) { dragged -= stepPx; onCount() }
+                    }
+                }
+            },
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width; val h = size.height
+            val bead = minOf(w, h * 0.9f) * 0.072f
+            // the string: a curve from the upper left, sweeping down to the lower right,
+            // sampled by arc length so beads sit evenly along it
+            val p0 = Offset(-w * 0.08f, h * 0.14f); val p1 = Offset(w * 0.62f, h * 0.1f); val p2 = Offset(w * 0.92f, h * 1.02f)
+            val n = 240
+            val pts = Array(n + 1) { i ->
+                val t = i / n.toFloat(); val u = 1 - t
+                Offset(u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x, u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y)
+            }
+            val acc = FloatArray(n + 1)
+            for (i in 1..n) acc[i] = acc[i - 1] + (pts[i] - pts[i - 1]).getDistance()
+            val total = acc[n]
+            fun at(d: Float): Offset {
+                val x = d.coerceIn(0f, total)
+                var i = acc.indexOfFirst { it >= x }.coerceAtLeast(1)
+                if (i < 0) i = n
+                val f = (x - acc[i - 1]) / (acc[i] - acc[i - 1]).coerceAtLeast(0.001f)
+                return pts[i - 1] + (pts[i] - pts[i - 1]) * f
+            }
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(pts[0].x, pts[0].y); for (i in 1..n) lineTo(pts[i].x, pts[i].y)
+            }
+            drawPath(path, Color(0xFF2B2B2B), style = androidx.compose.ui.graphics.drawscope.Stroke(2.5.dp.toPx()))
+
+            // waiting beads end at gapTop, counted beads start at gapBottom
+            val spacing = bead * 2.08f
+            val gapTop = total * 0.36f; val gapBottom = total * 0.66f
+            val v = anim.value
+            val first = kotlin.math.floor(v).toInt() - 12
+            for (k in first..first + 26) {
+                val d = when {
+                    k >= v -> gapTop - (k - v) * spacing
+                    k <= v - 1 -> gapBottom + (v - 1 - k) * spacing
+                    else -> gapTop + (gapBottom - gapTop) * (v - k)
+                }
+                if (d < -spacing || d > total + spacing) continue
+                val p = at(d)
+                val dark = k % 2 == 0
+                drawCircle(
+                    Brush.radialGradient(
+                        if (dark) listOf(Color(0xFF2A9A70), Color(0xFF0B4A37)) else listOf(Color(0xFFF6DDA0), Color(0xFFC49A45)),
+                        center = Offset(p.x - bead * 0.35f, p.y - bead * 0.35f), radius = bead * 1.5f,
+                    ),
+                    radius = bead, center = p,
+                )
+            }
+        }
+        Text(
+            count.toString(), fontSize = 72.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Palette.EmeraldDark,
+            modifier = Modifier.align(androidx.compose.ui.AbsoluteAlignment.TopRight).padding(top = 40.dp, end = 24.dp),
+        )
+        Text(
+            "اسحب لأسفل أو اضغط",
+            style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
+            modifier = Modifier.align(androidx.compose.ui.AbsoluteAlignment.TopLeft).padding(top = 6.dp)
+                .then(Modifier.padding(horizontal = 20.dp)),
+        )
     }
 }
