@@ -221,16 +221,14 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                         Text("سورة $suraName", color = inkSoft, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
                         Text("الجزء ${JUZ_NAMES[QuranDb.juzOfPage(p) - 1]}", color = inkSoft, style = MaterialTheme.typography.labelMedium)
                     }
-                    val hl = if (play.active && play.current != null) play.current else selected
+                    val hl = if (sheet == "ayah" && selected != null) selected else if (play.active && play.current != null) play.current else selected
                     MushafPageView(
                         page = p,
                         style = style,
                         highlight = hl,
                         modifier = Modifier.weight(1f).fillMaxWidth().padding(vertical = 4.dp),
-                        onTap = { a ->
-                            if (a == null || selected == a) { selected = null; chrome = !chrome }
-                            else { selected = a; sheet = "ayah" }
-                        },
+                        // a tap shows or hides the bars; the ayah menu is on long-press
+                        onTap = { selected = null; chrome = !chrome },
                         onLongPress = { a -> selected = a; sheet = "ayah" },
                     )
                     PageBadge(p, Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp))
@@ -355,7 +353,8 @@ private fun PlayerBar(page: Int, onReciter: () -> Unit, onRepeat: () -> Unit, on
             Box(
                 Modifier
                     .size(48.dp)
-                    .background(Palette.Emerald, CircleShape)
+                    .clip(CircleShape)
+                    .background(Palette.Emerald)
                     .clickable {
                         if (play.active) QuranPlayer.toggle(ctx)
                         else {
@@ -478,7 +477,7 @@ private fun RepeatSheet(start: AyahRef, onDismiss: () -> Unit) {
             }
             Spacer(Modifier.height(8.dp))
             Label("سرعة التلاوة")
-            Segmented(listOf(0.75f, 1f, 1.25f, 1.5f), speed, { arabicDigits(it.toString().removeSuffix(".0")) + "×" }) { speed = it }
+            Segmented(listOf(0.75f, 1f, 1.25f, 1.5f), speed, { arabicDigits(it.toString().removeSuffix(".0")) + "×" }) { speed = it; QuranPlayer.setSpeed(ctx, it) }
             Spacer(Modifier.height(18.dp))
             Button(
                 onClick = {
@@ -565,10 +564,10 @@ private fun ReciterSheet(currentSura: Int, onDismiss: () -> Unit) {
                 LazyColumn(state = listState, contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 16.dp), modifier = Modifier.height(420.dp)) {
                     items(Reciters.all, key = { it.id }) { rc ->
                         Row(
-                            Modifier.fillMaxWidth().clickable { Settings.reciter = rc.id }.padding(horizontal = 8.dp, vertical = 2.dp),
+                            Modifier.fillMaxWidth().clickable { QuranPlayer.changeReciter(ctx, rc.id) }.padding(horizontal = 8.dp, vertical = 2.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            RadioButton(rc.id == Settings.reciter, { Settings.reciter = rc.id })
+                            RadioButton(rc.id == Settings.reciter, { QuranPlayer.changeReciter(ctx, rc.id) })
                             Column {
                                 Text(rc.name, style = MaterialTheme.typography.titleMedium)
                                 Text(rc.style, style = MaterialTheme.typography.bodySmall, color = Palette.Muted)

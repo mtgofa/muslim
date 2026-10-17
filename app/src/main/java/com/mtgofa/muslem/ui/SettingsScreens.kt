@@ -97,6 +97,7 @@ import com.mtgofa.muslem.prayer.Prayer
 import com.mtgofa.muslem.prayer.Reliability
 import com.mtgofa.muslem.prayer.Scheduler
 import com.mtgofa.muslem.prayer.arabicDigits
+import com.mtgofa.muslem.quran.QuranPlayer
 import com.mtgofa.muslem.quran.Reciters
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -510,11 +511,11 @@ fun RecitersScreen(onBack: () -> Unit) {
                             .fillMaxWidth()
                             .padding(vertical = 3.dp)
                             .background(if (selected) Palette.EmeraldSoft else MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-                            .clickable { Settings.reciter = r.id }
+                            .clickable { QuranPlayer.changeReciter(ctx, r.id) }
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RadioButton(selected, { Settings.reciter = r.id })
+                        RadioButton(selected, { QuranPlayer.changeReciter(ctx, r.id) })
                         Column(Modifier.weight(1f)) {
                             Text(r.name, style = MaterialTheme.typography.titleMedium)
                             Text(

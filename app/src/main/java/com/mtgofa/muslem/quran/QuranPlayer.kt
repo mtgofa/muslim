@@ -88,6 +88,8 @@ object QuranPlayer {
     /** what the current queue covers, to continue into the next surah when it ends */
     private var rangeEnd: AyahRef? = null
     private var continuous = false
+    /** what the caller asked for, kept to rebuild the queue when the reciter changes */
+    private var requestedContinuous = false
     private lateinit var appCtx: Context
 
     private fun withController(ctx: Context, block: (MediaController) -> Unit) {
@@ -165,6 +167,7 @@ object QuranPlayer {
             }
         }
         rangeEnd = to
+        requestedContinuous = continuous
         this.continuous = continuous && !forever && Settings.rangeRepeat == 1 && perAyah >= 1
         _state.value = _state.value.copy(error = null, current = from, active = true)
         withController(ctx) { c ->
@@ -210,6 +213,18 @@ object QuranPlayer {
             val id = c.getMediaItemAt(i).mediaId.split(':').take(2)
             if (id != cur) { c.seekTo(i, 0); c.play(); return@withController }
         }
+    }
+
+    /** Switch reciter; a running recitation continues from the current ayah in the new voice. */
+    fun changeReciter(ctx: Context, id: String) {
+        if (Settings.reciter == id) return
+        Settings.reciter = id
+        val st = _state.value
+        val cur = st.current ?: return
+        val end = rangeEnd ?: return
+        if (!st.active) return
+        val from = if (cur.ayah == 0) AyahRef(cur.sura, 1) else cur
+        play(ctx, from, end, requestedContinuous)
     }
 
     fun setSpeed(ctx: Context, speed: Float) {

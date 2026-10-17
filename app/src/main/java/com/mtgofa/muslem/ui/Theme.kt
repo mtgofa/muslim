@@ -29,7 +29,7 @@ object Palette {
     val Ink = Color(0xFF17201C)
     val Muted = Color(0xFF6A746F)
     val Line = Color(0xFFE6E9E5)
-    val Paper = Color(0xFFFFFCF4)
+    val Paper = Color(0xFFFFFFFF)
 }
 
 val Plex = FontFamily(
