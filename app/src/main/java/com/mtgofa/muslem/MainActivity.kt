@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mosque
+import androidx.compose.material.icons.rounded.SelfImprovement
 import androidx.compose.material.icons.rounded.Settings as SettingsIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,6 +66,9 @@ import com.mtgofa.muslem.quran.AyahRef
 import com.mtgofa.muslem.quran.QuranDb
 import com.mtgofa.muslem.quran.QuranPlayer
 import com.mtgofa.muslem.ui.AboutScreen
+import com.mtgofa.muslem.ui.AdhkarChapterScreen
+import com.mtgofa.muslem.ui.AdhkarHomeScreen
+import com.mtgofa.muslem.ui.TasbeehScreen
 import com.mtgofa.muslem.ui.HomeScreen
 import com.mtgofa.muslem.ui.LocationScreen
 import com.mtgofa.muslem.ui.MuezzinScreen
@@ -91,6 +95,8 @@ sealed interface Route {
     data object Reciters : Route
     data object About : Route
     data class Mushaf(val page: Int, val focus: AyahRef?) : Route
+    data object Tasbeeh : Route
+    data class Adhkar(val id: Int) : Route
 }
 
 class MainActivity : ComponentActivity() {
@@ -128,6 +134,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
         dbReady = true
         QuranPlayer.reconnect(ctx)
         Updater.check(silent = true)
+        com.mtgofa.muslem.data.Content.sync()
     }
     val stack = remember { mutableStateListOf<Route>(Route.Tabs) }
     var tab by remember { mutableStateOf(0) }
@@ -179,6 +186,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                         )
                     },
                     quran = { QuranIndexScreen { page, s, a -> push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null)) } },
+                    adhkar = { AdhkarHomeScreen(onTasbeeh = { push(Route.Tasbeeh) }, onChapter = { push(Route.Adhkar(it)) }) },
                     settings = {
                         SettingsScreen(
                             onLocation = { push(Route.Location) },
@@ -197,6 +205,8 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
                 Route.Reciters -> RecitersScreen(::pop)
                 Route.About -> AboutScreen(::pop)
                 is Route.Mushaf -> MushafScreen(route.page, route.focus, ::pop)
+                Route.Tasbeeh -> TasbeehScreen(::pop)
+                is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
         }
     }
@@ -220,11 +230,11 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
 @Composable
 private fun Tabs(
     tab: Int, onTab: (Int) -> Unit,
-    home: @Composable () -> Unit, quran: @Composable () -> Unit, settings: @Composable () -> Unit,
+    home: @Composable () -> Unit, quran: @Composable () -> Unit, adhkar: @Composable () -> Unit, settings: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
-            when (tab) { 0 -> home(); 1 -> quran(); else -> settings() }
+            when (tab) { 0 -> home(); 1 -> quran(); 2 -> adhkar(); else -> settings() }
         }
         NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
             val colors = NavigationBarItemDefaults.colors(
@@ -233,7 +243,8 @@ private fun Tabs(
             )
             NavigationBarItem(tab == 0, { onTab(0) }, { Icon(Icons.Rounded.Mosque, null) }, label = { Text("الصلاة") }, colors = colors)
             NavigationBarItem(tab == 1, { onTab(1) }, { Icon(Icons.Rounded.MenuBook, null) }, label = { Text("القرآن") }, colors = colors)
-            NavigationBarItem(tab == 2, { onTab(2) }, { Icon(Icons.Rounded.SettingsIcon, null) }, label = { Text("الإعدادات") }, colors = colors)
+            NavigationBarItem(tab == 2, { onTab(2) }, { Icon(Icons.Rounded.SelfImprovement, null) }, label = { Text("الأذكار") }, colors = colors)
+            NavigationBarItem(tab == 3, { onTab(3) }, { Icon(Icons.Rounded.SettingsIcon, null) }, label = { Text("الإعدادات") }, colors = colors)
         }
     }
 }

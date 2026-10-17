@@ -11,39 +11,20 @@ data class Reciter(val id: String, val name: String, val style: String = "مرت
 object Reciters {
     private const val BASE = "https://everyayah.com/data/"
 
-    val all = listOf(
-        Reciter("Abdul_Basit_Murattal_64kbps", "عبد الباسط عبد الصمد"),
-        Reciter("Abdul_Basit_Mujawwad_128kbps", "عبد الباسط عبد الصمد", "مجوّد"),
-        Reciter("Minshawy_Murattal_128kbps", "محمد صديق المنشاوي"),
-        Reciter("Minshawy_Mujawwad_64kbps", "محمد صديق المنشاوي", "مجوّد"),
-        Reciter("Husary_128kbps", "محمود خليل الحصري"),
-        Reciter("Husary_Mujawwad_64kbps", "محمود خليل الحصري", "مجوّد"),
-        Reciter("Husary_Muallim_128kbps", "محمود خليل الحصري", "المصحف المعلّم"),
-        Reciter("Mustafa_Ismail_48kbps", "مصطفى إسماعيل", "مجوّد"),
-        Reciter("Mohammad_al_Tablaway_128kbps", "محمد محمود الطبلاوي"),
-        Reciter("mahmoud_ali_al_banna_32kbps", "محمود علي البنا"),
-        Reciter("Ahmed_Neana_128kbps", "أحمد نعينع"),
-        Reciter("Alafasy_128kbps", "مشاري راشد العفاسي"),
-        Reciter("Abdurrahmaan_As-Sudais_64kbps", "عبد الرحمن السديس"),
-        Reciter("Saood_ash-Shuraym_64kbps", "سعود الشريم"),
-        Reciter("MaherAlMuaiqly128kbps", "ماهر المعيقلي"),
-        Reciter("Yasser_Ad-Dussary_128kbps", "ياسر الدوسري"),
-        Reciter("Nasser_Alqatami_128kbps", "ناصر القطامي"),
-        Reciter("Abu_Bakr_Ash-Shaatree_128kbps", "أبو بكر الشاطري"),
-        Reciter("Ghamadi_40kbps", "سعد الغامدي"),
-        Reciter("ahmed_ibn_ali_al_ajamy_128kbps", "أحمد بن علي العجمي"),
-        Reciter("Fares_Abbad_64kbps", "فارس عباد"),
-        Reciter("Muhammad_Ayyoub_128kbps", "محمد أيوب"),
-        Reciter("Muhammad_Jibreel_128kbps", "محمد جبريل"),
-        Reciter("Hudhaify_128kbps", "علي الحذيفي"),
-        Reciter("Salah_Al_Budair_128kbps", "صلاح البدير"),
-        Reciter("Abdullah_Basfar_192kbps", "عبد الله بصفر"),
-        Reciter("Abdullaah_3awwaad_Al-Juhaynee_128kbps", "عبد الله عواد الجهني"),
-        Reciter("Ali_Jaber_64kbps", "علي جابر"),
-        Reciter("Hani_Rifai_192kbps", "هاني الرفاعي"),
-        Reciter("Akram_AlAlaqimy_128kbps", "أكرم العلاقمي"),
-        Reciter("Ibrahim_Akhdar_32kbps", "إبراهيم الأخضر"),
-    )
+    @Volatile private var cache: List<Reciter>? = null
+    init { com.mtgofa.muslem.data.Content.onChange { cache = null } }
+
+    /** Every-ayah reciters, from content/reciters.json (updatable from GitHub). */
+    val all: List<Reciter>
+        get() = cache ?: synchronized(this) {
+            cache ?: run {
+                val arr = org.json.JSONArray(com.mtgofa.muslem.data.Content.read(com.mtgofa.muslem.data.Content.RECITERS))
+                List(arr.length()) { i ->
+                    val o = arr.getJSONObject(i)
+                    Reciter(o.getString("id"), o.getString("name"), o.optString("style", "مرتّل"))
+                }
+            }.also { cache = it }
+        }
 
     fun byId(id: String) = all.firstOrNull { it.id == id } ?: all.first()
 

@@ -6,30 +6,30 @@ import com.mtgofa.muslem.R
 import com.mtgofa.muslem.data.Http
 import java.io.File
 
-/** One adhan voice: bundled in the APK ([raw]) or downloaded once from [file]. */
-data class Muezzin(val id: String, val name: String, val raw: Int = 0, val file: String = "") {
+/** One adhan voice: bundled in the APK ([raw]) or downloaded once from [url]. */
+data class Muezzin(val id: String, val name: String, val raw: Int = 0, val url: String = "") {
     val bundled get() = raw != 0
 }
 
 object Muezzins {
-    private const val BASE = "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/"
+    /** voices shipped inside the APK, by id */
+    private val BUNDLED = mapOf("abdulbasit" to R.raw.adhan_abdulbasit, "makkah" to R.raw.adhan_makkah)
 
-    val all = listOf(
-        Muezzin("abdulbasit", "عبد الباسط عبد الصمد", raw = R.raw.adhan_abdulbasit),
-        Muezzin("makkah", "أذان الحرم المكي", raw = R.raw.adhan_makkah),
-        Muezzin("refaat", "محمد رفعت", file = "Athan Mohammad Ref3at.mp3"),
-        Muezzin("minshawy", "محمد صديق المنشاوي", file = "Athan Mohammad Almenshawy.mp3"),
-        Muezzin("naina", "أحمد نعينع", file = "Athan Ahmad Nuyne3.mp3"),
-        Muezzin("alafasy", "مشاري العفاسي", file = "Athan Mishary Alafasi.mp3"),
-        Muezzin("qatami", "ناصر القطامي", file = "Athan Nasser Alqatami.mp3"),
-        Muezzin("malki", "حمدان المالكي", file = "Athan Hamdan Almalki.mp3"),
-        Muezzin("zahrani", "منصور الزهراني", file = "Athan Mansoor Az-Zahrani.mp3"),
-        Muezzin("arkani", "إبراهيم الأركاني", file = "Athan Ibrahim Al-Arkani.mp3"),
-        Muezzin("deghreri", "حمد الدغريري", file = "Athan Hamad Deghreri.mp3"),
-        Muezzin("hamathani", "ماجد الحمداني", file = "Athan Majed Al-hamathani.mp3"),
-        Muezzin("khatba", "صهيب خطبا", file = "Athan Suhaib Khatba.mp3"),
-        Muezzin("fajr_chebae", "أذان الفجر — مالك شيبة", file = "Athan Al-fajer - Malek chebae.mp3"),
-    )
+    @Volatile private var cache: List<Muezzin>? = null
+    init { com.mtgofa.muslem.data.Content.onChange { cache = null } }
+
+    /** From content/muezzins.json (updatable from GitHub); bundled voices keep their raw file. */
+    val all: List<Muezzin>
+        get() = cache ?: synchronized(this) {
+            cache ?: run {
+                val arr = org.json.JSONArray(com.mtgofa.muslem.data.Content.read(com.mtgofa.muslem.data.Content.MUEZZINS))
+                List(arr.length()) { i ->
+                    val o = arr.getJSONObject(i)
+                    val id = o.getString("id")
+                    Muezzin(id, o.getString("name"), BUNDLED[id] ?: 0, o.optString("url", ""))
+                }
+            }.also { cache = it }
+        }
 
     fun byId(id: String) = all.firstOrNull { it.id == id } ?: all.first()
 
@@ -48,7 +48,7 @@ object Muezzins {
     fun download(ctx: Context, m: Muezzin, progress: (Float) -> Unit = {}): Boolean {
         if (m.bundled) return true
         val out = localFile(ctx, m)
-        return Http.download(BASE + Uri.encode(m.file), out, progress)
+        return m.url.isNotBlank() && Http.download(m.url, out, progress)
     }
 
     fun delete(ctx: Context, m: Muezzin) { if (!m.bundled) localFile(ctx, m).delete() }

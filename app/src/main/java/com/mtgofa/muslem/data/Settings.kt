@@ -149,6 +149,24 @@ object Settings {
         edit { putString("ayahMarks", m.joinToString(",") { "${it.first}:${it.second}" }) }
     }
 
+    // ---- tasbeeh -------------------------------------------------------------------------
+    var tasbeehPhrase: String
+        get() = sp.getString("tsb_phrase", "subhan")!!
+        set(v) = edit { putString("tsb_phrase", v) }
+    fun tasbeehCount(id: String) = sp.getInt("tsb_count_$id", 0)
+    /** counts are written without bumping [changes]: the counter screen holds its own state */
+    fun setTasbeehCount(id: String, v: Int) { sp.edit().putInt("tsb_count_$id", v).apply() }
+    var tasbeehTotal: Long
+        get() = sp.getLong("tsb_total", 0)
+        set(v) { sp.edit().putLong("tsb_total", v).apply() }
+    var tasbeehVibrate: Boolean
+        get() = sp.getBoolean("tsb_vibrate", true)
+        set(v) = edit { putBoolean("tsb_vibrate", v) }
+    /** 0 = no sound, 1 = at the end of each round, 2 = every 100 */
+    var tasbeehSound: Int
+        get() = sp.getInt("tsb_sound", 1)
+        set(v) = edit { putInt("tsb_sound", v) }
+
     // ---- misc ----------------------------------------------------------------------------
     var onboarded: Boolean
         get() = sp.getBoolean("onboarded", false)

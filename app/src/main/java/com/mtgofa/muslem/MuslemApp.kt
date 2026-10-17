@@ -12,6 +12,7 @@ class MuslemApp : Application() {
     override fun onCreate() {
         super.onCreate()
         Settings.init(this)
+        com.mtgofa.muslem.data.Content.init(this)
         createChannels()
         thread(name = "quran-db") { QuranDb.init(this) }
         Scheduler.schedule(this)

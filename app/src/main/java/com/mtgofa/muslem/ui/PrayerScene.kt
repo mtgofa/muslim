@@ -191,7 +191,7 @@ fun PrayerHeader(
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Box(Modifier.size(214.dp), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(232.dp), contentAlignment = Alignment.Center) {
                 Canvas(Modifier.fillMaxSize()) {
                     val stroke = 7.dp.toPx()
                     val inset = stroke / 2
@@ -209,8 +209,14 @@ fun PrayerHeader(
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("الصلاة القادمة", color = Color(0xD9FFFFFF), style = MaterialTheme.typography.labelLarge)
-                    Text(nextName, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, fontFamily = Plex)
-                    Text(remaining, color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold, fontFamily = Plex)
+                    Text(nextName, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = Plex)
+                    // hours, minutes and seconds set apart so the clock reads at a glance
+                    // always left-to-right (h:mm:ss), with thin gaps around the colons
+                    Text(
+                        remaining.replace(":", "\u2009:\u2009"), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold,
+                        fontFamily = Plex, letterSpacing = 1.sp, maxLines = 1,
+                        style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
+                    )
                     Text(nextTime, color = Color(0xFFF2D59B), style = MaterialTheme.typography.titleSmall)
                 }
             }

@@ -68,6 +68,10 @@ android {
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true; buildConfig = true }
 
+    // content/ (adhkar, tasbeeh, reciters, muezzins) is bundled as assets and also served from
+    // GitHub so the app can pick up edits without a release
+    sourceSets["main"].assets.srcDir(rootProject.file("content"))
+
     packaging {
         resources.excludes += setOf(
             "/META-INF/{AL2.0,LGPL2.1}",
