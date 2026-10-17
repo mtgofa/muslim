@@ -48,11 +48,11 @@ private const val LINES = 15
 /** Surah name and basmala sizes, as a fraction of the line height. */
 private const val TITLE_SIZE = 0.38f
 /** Extra stroke weight for the surah names, as a fraction of their size. */
-private const val TITLE_WEIGHT = 0.018f
+private const val TITLE_WEIGHT = 0.008f
 private val TITLE_SPREAD = listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f, 0f to 0f)
 
-/** Extra stroke weight for the page text, as a fraction of the text size. */
-private const val WEIGHT = 0.0025f
+/** Pixel offsets of the passes that give the page text its printed weight. */
+private val WEIGHT_SPREAD = floatArrayOf(0f, 0f, 0.45f, 0f, 0f, 0.45f)
 /** Basmala width as a fraction of the page width. */
 private const val BASMALA_WIDTH = 0.62f
 /** The long-form basmala in the title font, whose colour layers carry the tajweed. */
@@ -193,15 +193,16 @@ fun MushafPageView(
                 val bpaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.basmalaSize; color = ink.toArgb() }
                 for ((t, x, y) in lay.basmalas) nc.drawTextRun(t, 0, t.length, 0, t.length, x, y, true, bpaint)
                 // ---- words
+                // the printed page has heavier strokes than the raw outlines. Each word is drawn
+                // three times a fraction of a pixel apart (colour glyphs can't be stroked). Words
+                // are snapped to whole pixels first, so every word thickens by exactly the same
+                // amount — otherwise sub-pixel positions made some lines look bolder than others.
                 val wp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.pageFont; textSize = lay.textSize; color = ink.toArgb() }
-                // the printed page has heavier strokes than the raw outlines; spreading each word
-                // over a sub-pixel square thickens it without touching the tajweed colours
-                val d = lay.textSize * WEIGHT
-                val spread = floatArrayOf(-d, -d, d, -d, -d, d, d, d, 0f, 0f)
                 for (pl in lay.words) {
                     val s = pl.g.code
-                    for (k in spread.indices step 2) {
-                        nc.drawTextRun(s, 0, s.length, 0, s.length, pl.x + spread[k], pl.baseline + spread[k + 1], true, wp)
+                    val x = kotlin.math.round(pl.x); val y = kotlin.math.round(pl.baseline)
+                    for (k in WEIGHT_SPREAD.indices step 2) {
+                        nc.drawTextRun(s, 0, s.length, 0, s.length, x + WEIGHT_SPREAD[k], y + WEIGHT_SPREAD[k + 1], true, wp)
                     }
                 }
             }
