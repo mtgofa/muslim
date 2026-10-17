@@ -8,6 +8,11 @@
   "name": "أذان الحرم المكي"
  },
  {
+  "id": "ali_mulla",
+  "name": "علي ملا — الحرم المكي",
+  "url": "https://raw.githubusercontent.com/mtgofa/muslim/main/content/audio/ali_mulla.mp3"
+ },
+ {
   "id": "refaat",
   "name": "محمد رفعت",
   "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Mohammad%20Ref3at.mp3"

@@ -71,6 +71,8 @@ android {
     // content/ (adhkar, tasbeeh, reciters, muezzins) is bundled as assets and also served from
     // GitHub so the app can pick up edits without a release
     sourceSets["main"].assets.srcDir(rootProject.file("content"))
+    // content/audio holds downloadable voices served from GitHub; keep them out of the APK
+    androidResources { ignoreAssetsPatterns += "<dir>audio" }
 
     packaging {
         resources.excludes += setOf(
