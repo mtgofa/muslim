@@ -244,9 +244,11 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     // juz on the right, surah name on the left, as printed
-                    Row(Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp, vertical = 2.dp)) {
+                    // juz on the right, surah name on the left, as printed; the wird between them
+                    Row(Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("الجزء ${JUZ_NAMES[QuranDb.juzOfPage(p) - 1]}", color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                        Text(suraName, color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge)
+                        key(wirdRev) { WirdBadge(p) }
+                        Text(suraName, color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                     }
                     val hl = if (sheet == "ayah" && selected != null) selected else if (play.active && play.current != null) play.current else selected
                     MushafPageView(
@@ -308,28 +310,6 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     onRepeat = { sheet = "repeat" },
                     onIndex = { sheet = "index" },
                 )
-            }
-        }
-        // ---- daily wird: what is left today; on the wird's last page, a button to record it
-        key(wirdRev) {
-            val w = com.mtgofa.muslem.data.Wird
-            if (w.active && !w.complete) Row(
-                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = if (chrome) 70.dp else 4.dp)
-                    .clip(CircleShape).background(Color(0xE6C0392B)).padding(horizontal = 14.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    if (w.leftToday == 0) "أتممت ورد اليوم ✓" else "الورد: باقي ${w.pages(w.leftToday)}",
-                    style = MaterialTheme.typography.labelLarge, color = Color.White,
-                )
-                // the very last page has no page after it to turn to
-                if (page == w.next && page == com.mtgofa.muslem.data.Wird.LAST_PAGE) {
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "تمّ ✓", style = MaterialTheme.typography.labelLarge, color = Color(0xFFC0392B),
-                        modifier = Modifier.clip(CircleShape).background(Color.White).clickable { w.markRead(ctx) }.padding(horizontal = 10.dp, vertical = 2.dp),
-                    )
-                }
             }
         }
         // ---- meanings mode: the tapped word's meaning, and a way to see the whole page
@@ -904,5 +884,28 @@ private fun PageMeaningsSheet(page: Int, onDismiss: () -> Unit) {
 private fun BarIcon(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
     IconButton(onClick = onClick, modifier = Modifier.size(52.dp)) {
         Icon(icon, label, tint = tint, modifier = Modifier.size(29.dp))
+    }
+}
+
+/** The daily wird's status in the page header; on the khatma's last page, a button to record it. */
+@Composable
+private fun WirdBadge(page: Int) {
+    val ctx = LocalContext.current
+    val w = com.mtgofa.muslem.data.Wird
+    if (!w.active || w.complete) return
+    val done = w.leftToday == 0
+    Row(
+        Modifier.clip(CircleShape).background(if (done) Palette.Emerald else Color(0xFFC0392B)).padding(horizontal = 12.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(w.status(), style = MaterialTheme.typography.labelMedium, color = Color.White, maxLines = 1)
+        // the very last page has no page after it to turn to
+        if (page == w.next && page == com.mtgofa.muslem.data.Wird.LAST_PAGE) {
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "تمّ ✓", style = MaterialTheme.typography.labelMedium, color = Color(0xFFC0392B),
+                modifier = Modifier.clip(CircleShape).background(Color.White).clickable { w.markRead(ctx) }.padding(horizontal = 8.dp, vertical = 1.dp),
+            )
+        }
     }
 }

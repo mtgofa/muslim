@@ -220,7 +220,7 @@ private fun WirdProgress(onRead: () -> Unit, onEdit: () -> Unit, onStop: () -> U
                 Column(Modifier.weight(1f)) {
                     Text("ورد اليوم", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        if (Wird.leftToday == 0) "أتممت ورد اليوم ✓" else "باقي ${Wird.pages(Wird.leftToday)} من ${Wird.pages(Wird.pagesPerDay)}",
+                        Wird.status().removePrefix("الورد: "),
                         style = MaterialTheme.typography.bodyMedium, color = if (Wird.leftToday == 0) Palette.Emerald else Palette.Muted,
                     )
                 }

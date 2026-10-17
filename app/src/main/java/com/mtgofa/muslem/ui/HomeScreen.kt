@@ -274,11 +274,7 @@ private fun WirdCard(onOpen: () -> Unit, onRead: (Int) -> Unit) {
         Column(Modifier.weight(1f)) {
             Text("الورد اليومي", style = MaterialTheme.typography.titleMedium)
             Text(
-                when {
-                    w.complete -> "أتممت الختمة، ما شاء الله"
-                    w.leftToday == 0 -> "أتممت ورد اليوم ✓ · الختام ${wirdDate(w.expectedEnd())}"
-                    else -> "باقي ${w.pages(w.leftToday)} اليوم · الختام ${wirdDate(w.expectedEnd())}"
-                },
+                if (w.complete) "أتممت الختمة، ما شاء الله" else "${w.status().removePrefix("الورد: ")} · الختام ${wirdDate(w.expectedEnd())}",
                 style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
             )
         }

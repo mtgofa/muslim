@@ -52,7 +52,30 @@ object Wird {
     /** pages read today (resets at midnight) */
     val readToday: Int
         get() = if (sp.getLong("todayDay", -1) == LocalDate.now().toEpochDay()) sp.getInt("todayCount", 0) else 0
-    val leftToday get() = (pagesPerDay - readToday).coerceAtLeast(0).coerceAtMost((LAST_PAGE - next + 1).coerceAtLeast(0))
+    /**
+     * Pages the plan expects to have been read by the end of today: everything read before the
+     * plan (re)started, plus [pagesPerDay] for each day since, today included.
+     */
+    private val expectedByToday: Int
+        get() {
+            val base = sp.getLong("baseDay", sp.getLong("startDay", LocalDate.now().toEpochDay()))
+            val days = (LocalDate.now().toEpochDay() - base).coerceAtLeast(0) + 1
+            return (sp.getInt("baseRead", 0) + days * pagesPerDay).toInt().coerceAtMost(totalPages)
+        }
+
+    /** pages still to read today to stay on plan (missed days included) */
+    val leftToday get() = (expectedByToday - readPages).coerceAtLeast(0)
+
+    /** how many pages ahead of the plan (negative = behind) */
+    val ahead get() = readPages - expectedByToday
+
+    /** One line for the Mushaf badge and the cards. */
+    fun status(): String = when {
+        complete -> "أتممت الختمة"
+        leftToday > 0 -> "الورد: باقي ${pages(leftToday)}"
+        ahead > 0 -> "سابق بـ${pages(ahead)}"
+        else -> "أتممت ورد اليوم ✓"
+    }
 
     /** Days needed to finish [remaining] pages at [perDay] a day, and the day it ends. */
     fun estimate(remaining: Int, perDay: Int, from: LocalDate = LocalDate.now()): Pair<Int, LocalDate> {
@@ -75,12 +98,18 @@ object Wird {
             putBoolean("active", true); putInt("ppd", perDay); putInt("start", from); putInt("next", from)
             putInt("remind", remindAt?.let { it.hour * 60 + it.minute } ?: -1)
             putLong("startDay", LocalDate.now().toEpochDay()); putLong("todayDay", -1); putInt("todayCount", 0)
+            putLong("baseDay", LocalDate.now().toEpochDay()); putInt("baseRead", 0)
         }
         schedule(ctx)
     }
 
     fun update(ctx: Context, perDay: Int, remindAt: LocalTime?) {
-        edit { putInt("ppd", perDay); putInt("remind", remindAt?.let { it.hour * 60 + it.minute } ?: -1) }
+        // a new pace counts from today: what was read before today becomes the baseline
+        val before = (readPages - readToday).coerceAtLeast(0)
+        edit {
+            putInt("ppd", perDay); putInt("remind", remindAt?.let { it.hour * 60 + it.minute } ?: -1)
+            putLong("baseDay", LocalDate.now().toEpochDay()); putInt("baseRead", before)
+        }
         schedule(ctx)
     }
 
