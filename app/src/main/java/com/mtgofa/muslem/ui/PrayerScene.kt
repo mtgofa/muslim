@@ -130,15 +130,16 @@ private fun DrawScope.skyline(color: Color) {
         // pointed cap
         p.moveTo(x - mw / 2, top); p.lineTo(x, top - mw * 2.4f); p.lineTo(x + mw / 2, top); p.close()
     }
-    // low wall across the whole width
-    rect(0f, base - h * 0.1f, 1f)
-    dome(0.5f, 0.11f, base - h * 0.42f)
-    dome(0.33f, 0.06f, base - h * 0.27f)
-    dome(0.67f, 0.06f, base - h * 0.27f)
-    dome(0.12f, 0.045f, base - h * 0.2f)
-    dome(0.88f, 0.045f, base - h * 0.2f)
-    minaret(0.24f, base - h * 0.55f)
-    minaret(0.76f, base - h * 0.55f)
+    // only the tops of the skyline show: the countdown sits over open sky
+    val k = 0.45f
+    rect(0f, base - h * 0.1f * k, 1f)
+    dome(0.5f, 0.09f, base - h * 0.42f * k)
+    dome(0.33f, 0.05f, base - h * 0.27f * k)
+    dome(0.67f, 0.05f, base - h * 0.27f * k)
+    dome(0.12f, 0.04f, base - h * 0.2f * k)
+    dome(0.88f, 0.04f, base - h * 0.2f * k)
+    minaret(0.24f, base - h * 0.55f * k)
+    minaret(0.76f, base - h * 0.55f * k)
     drawPath(p, color)
 }
 
