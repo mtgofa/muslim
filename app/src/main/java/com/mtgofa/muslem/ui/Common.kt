@@ -140,9 +140,12 @@ fun RowDivider() = HorizontalDivider(Modifier.padding(start = 66.dp, end = 16.dp
 
 /** − value + stepper. [format] renders the value (e.g. "١٠ د" or "إيقاف"). */
 @Composable
-fun Stepper(value: Int, range: IntRange, step: Int = 1, format: (Int) -> String, onChange: (Int) -> Unit) {
+fun Stepper(
+    value: Int, range: IntRange, step: Int = 1, modifier: Modifier = Modifier, fill: Boolean = false,
+    format: (Int) -> String, onChange: (Int) -> Unit,
+) {
     Row(
-        Modifier
+        modifier
             .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -152,7 +155,7 @@ fun Stepper(value: Int, range: IntRange, step: Int = 1, format: (Int) -> String,
             format(value),
             style = MaterialTheme.typography.titleSmall,
             textAlign = TextAlign.Center,
-            modifier = Modifier.width(72.dp),
+            modifier = if (fill) Modifier.weight(1f) else Modifier.width(72.dp),
         )
         StepButton(Icons.Rounded.Add, value + step <= range.last) { onChange((value + step).coerceIn(range)) }
     }

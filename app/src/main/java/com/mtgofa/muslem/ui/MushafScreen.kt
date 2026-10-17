@@ -510,11 +510,11 @@ private fun AyahPicker(sura: Int, ayah: Int, onChange: (Int, Int) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.weight(1f)) {
             Text("سورة ${QuranDb.surah(sura).name}", style = MaterialTheme.typography.titleSmall, maxLines = 1)
-            Stepper(sura, 1..114, format = { arabicDigits(it) }) { onChange(it, 1) }
+            Stepper(sura, 1..114, modifier = Modifier.fillMaxWidth(), fill = true, format = { arabicDigits(it) }) { onChange(it, 1) }
         }
         Column(Modifier.weight(1f)) {
             Text("آية", style = MaterialTheme.typography.titleSmall)
-            Stepper(ayah, 1..QuranDb.surah(sura).ayahs, format = { arabicDigits(it) }) { onChange(sura, it) }
+            Stepper(ayah, 1..QuranDb.surah(sura).ayahs, modifier = Modifier.fillMaxWidth(), fill = true, format = { arabicDigits(it) }) { onChange(sura, it) }
         }
     }
 }
