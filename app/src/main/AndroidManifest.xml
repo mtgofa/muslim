@@ -75,6 +75,7 @@
 
         <receiver android:name=".prayer.AlarmReceiver" android:exported="false" />
         <receiver android:name=".data.WirdReceiver" android:exported="false" />
+        <receiver android:name=".data.FastingReceiver" android:exported="false" />
 
         <receiver android:name=".prayer.BootReceiver" android:exported="true">
             <intent-filter>

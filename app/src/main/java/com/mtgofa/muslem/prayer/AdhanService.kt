@@ -44,6 +44,38 @@ class AdhanService : Service() {
     private var focus: AudioFocusRequest? = null
     private val main = Handler(Looper.getMainLooper())
     private var finishedNote: Notification? = null
+    /**
+     * While a sound plays, a media session with "remote" volume takes the volume keys: Android
+     * routes the hardware keys to it (screen on or off, app open or not), and any press stops
+     * the sound instead of changing the volume.
+     */
+    private var keys: android.media.session.MediaSession? = null
+
+    private fun grabVolumeKeys() {
+        if (keys != null) return
+        keys = android.media.session.MediaSession(this, "adhan-volume-keys").apply {
+            setPlaybackToRemote(object : android.media.VolumeProvider(VOLUME_CONTROL_RELATIVE, 100, 50) {
+                override fun onAdjustVolume(direction: Int) { main.post { finish() } }
+                override fun onSetVolumeTo(volume: Int) { main.post { finish() } }
+            })
+            setPlaybackState(
+                android.media.session.PlaybackState.Builder()
+                    .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f)
+                    .setActions(android.media.session.PlaybackState.ACTION_STOP or android.media.session.PlaybackState.ACTION_PAUSE)
+                    .build(),
+            )
+            setCallback(object : android.media.session.MediaSession.Callback() {
+                override fun onStop() { finish() }
+                override fun onPause() { finish() }
+            })
+            isActive = true
+        }
+    }
+
+    private fun releaseVolumeKeys() {
+        keys?.run { isActive = false; release() }
+        keys = null
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -139,12 +171,14 @@ class AdhanService : Service() {
                 prepare()
                 start()
             }
+            grabVolumeKeys()
         } catch (e: Exception) {
             finish()
         }
     }
 
     private fun releasePlayer() {
+        releaseVolumeKeys()
         main.removeCallbacksAndMessages(null)
         player?.runCatching { stop(); release() }
         player = null

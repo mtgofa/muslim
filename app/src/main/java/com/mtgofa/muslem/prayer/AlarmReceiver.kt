@@ -36,5 +36,6 @@ class BootReceiver : BroadcastReceiver() {
         Settings.init(ctx)
         Scheduler.schedule(ctx)
         com.mtgofa.muslem.data.Wird.schedule(ctx)
+        com.mtgofa.muslem.data.Fasting.schedule(ctx)
     }
 }

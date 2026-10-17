@@ -3,6 +3,7 @@ package com.mtgofa.muslem.ui
 import androidx.compose.foundation.background
 import androidx.compose.runtime.key
 import androidx.compose.material.icons.rounded.EventNote
+import androidx.compose.material.icons.rounded.NightsStay
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.AutoStories
@@ -117,6 +118,7 @@ fun HomeScreen(
     onSettings: () -> Unit,
     onWird: () -> Unit,
     onReadWird: (Int) -> Unit,
+    onFasting: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
@@ -226,6 +228,7 @@ fun HomeScreen(
                 Tile("السبحة", null, Color(0xFFB8893A), Color(0xFFFFF3E0), onTasbeeh),
                 Tile("القبلة", Icons.Rounded.Explore, Color(0xFF2B7FC1), Color(0xFFE3F0FB), onQibla),
                 Tile("الورد اليومي", Icons.Rounded.EventNote, Color(0xFFC0392B), Color(0xFFFDEDEB), onWird),
+                Tile("الصيام", Icons.Rounded.NightsStay, Color(0xFF3F51B5), Color(0xFFE8EAF6), onFasting),
                 Tile("حصن المسلم", Icons.Rounded.Shield, Color(0xFF1F7A5A), Color(0xFFE6F4EF), onHisn),
                 Tile("الإعدادات", Icons.Rounded.Settings, Color(0xFF5E6A64), Color(0xFFEFF1EE), onSettings),
             )

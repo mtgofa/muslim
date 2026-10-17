@@ -14,10 +14,12 @@ class MuslemApp : Application() {
         Settings.init(this)
         com.mtgofa.muslem.data.Content.init(this)
         com.mtgofa.muslem.data.Wird.init(this)
+        com.mtgofa.muslem.data.Fasting.init(this)
         createChannels()
         thread(name = "quran-db") { QuranDb.init(this) }
         Scheduler.schedule(this)
         com.mtgofa.muslem.data.Wird.schedule(this)
+        com.mtgofa.muslem.data.Fasting.schedule(this)
     }
 
     private fun createChannels() {

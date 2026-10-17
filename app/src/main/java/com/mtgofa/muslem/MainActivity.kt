@@ -71,6 +71,7 @@ import com.mtgofa.muslem.ui.AdhkarHomeScreen
 import com.mtgofa.muslem.ui.HisnScreen
 import com.mtgofa.muslem.ui.QiblaScreen
 import com.mtgofa.muslem.ui.WirdScreen
+import com.mtgofa.muslem.ui.FastingScreen
 import com.mtgofa.muslem.ui.TasbeehScreen
 import com.mtgofa.muslem.ui.HomeScreen
 import com.mtgofa.muslem.ui.LocationScreen
@@ -105,6 +106,7 @@ sealed interface Route {
     data object AdhkarHome : Route
     data object Settings : Route
     data object Wird : Route
+    data object Fasting : Route
     data class Adhkar(val id: Int) : Route
 }
 
@@ -209,6 +211,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                     onHisn = { push(Route.Hisn) },
                     onSettings = { push(Route.Settings) },
                     onWird = { push(Route.Wird) },
+                    onFasting = { push(Route.Fasting) },
                     onReadWird = { push(Route.Mushaf(it, null)) },
                 )
                 Route.QuranIndex -> QuranIndexScreen(onBack = ::pop) { page, s, a ->
@@ -235,6 +238,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                 Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }
                 Route.Qibla -> QiblaScreen(::pop)
                 Route.Wird -> WirdScreen(::pop) { push(Route.Mushaf(it, null)) }
+                Route.Fasting -> FastingScreen(::pop)
                 is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
         }
