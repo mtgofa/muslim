@@ -142,9 +142,15 @@ fun SettingsScreen(
                 RowDivider()
                 SettingRow("ضبط كل صلاة", "نوع التنبيه، تعديل الوقت، التنبيه قبل الأذان، والإقامة", Icons.Rounded.Alarm, onPrayers) { Chevron() }
                 RowDivider()
-                VolumeRow("مستوى صوت الأذان", Settings.adhanVolume) { Settings.adhanVolume = it }
+                SwitchRow(
+                    "شغّل الأذان حتى لو الموبايل صامت",
+                    if (Settings.adhanInSilent) "يعمل على صوت المنبّه دائماً" else "يتبع صوت الرنين، ويسكت مع الصامت والهزاز",
+                    Icons.Rounded.VolumeUp, Settings.adhanInSilent,
+                ) { Settings.adhanInSilent = it }
                 RowDivider()
-                VolumeRow("مستوى صوت «سبحان الله»", Settings.alertVolume, preview = { AdhanService.preview(ctx, null) }) { Settings.alertVolume = it }
+                SettingRow("تجربة «سبحان الله»", "صوت التنبيه قبل الأذان والإقامة", Icons.Rounded.Notifications, { AdhanService.preview(ctx, null) }) {
+                    Icon(Icons.Rounded.PlayArrow, null, tint = Palette.Emerald)
+                }
                 RowDivider()
                 SwitchRow("إيقاف الأذان أثناء المكالمات", null, Icons.Rounded.Notifications, Settings.muteInCall) { Settings.muteInCall = it }
             }
@@ -183,21 +189,6 @@ fun SettingsScreen(
 
 @Composable
 fun Chevron() = Icon(Icons.Rounded.ChevronLeft, null, tint = Palette.Muted)
-
-@Composable
-private fun VolumeRow(title: String, value: Int, preview: (() -> Unit)? = null, onChange: (Int) -> Unit) {
-    var v by remember(value) { mutableFloatStateOf(value.toFloat()) }
-    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconBadge(Icons.Rounded.VolumeUp, size = 36.dp)
-            Spacer(Modifier.width(14.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-            Text("${arabicDigits(v.toInt())}٪", style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
-            if (preview != null) IconButton(onClick = preview) { Icon(Icons.Rounded.PlayArrow, "تجربة", tint = Palette.Emerald) }
-        }
-        Slider(v, { v = it }, valueRange = 10f..100f, onValueChangeFinished = { onChange(v.toInt()) }, modifier = Modifier.padding(start = 50.dp))
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -280,7 +271,7 @@ fun MuezzinScreen(onBack: () -> Unit) {
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
             LazyColumn(contentPadding = PaddingValues(16.dp)) {
                 if (fajrMode) item {
-                    MuezzinRow("مثل باقي الصلوات", Settings.fajrMuezzin.isEmpty(), true, null, false, null, {}, { Settings.fajrMuezzin = "" }, null)
+                    MuezzinRow("مثل باقي الصلوات (بدون «الصلاة خير من النوم»)", Settings.fajrMuezzin.isEmpty(), true, null, false, null, {}, { Settings.fajrMuezzin = "" }, null)
                 }
                 items(Muezzins.all, key = { it.id }) { m ->
                     val available = Muezzins.isAvailable(ctx, m)

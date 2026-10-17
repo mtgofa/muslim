@@ -153,6 +153,7 @@ fun PrayerHeader(
     location: String,
     hijri: String,
     date: String,
+    label: String,
     nextName: String,
     nextTime: String,
     remaining: String,
@@ -209,7 +210,7 @@ fun PrayerHeader(
                     )
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("الصلاة القادمة", color = Color(0xD9FFFFFF), style = MaterialTheme.typography.labelLarge)
+                    Text(label, color = Color(0xD9FFFFFF), style = MaterialTheme.typography.labelLarge)
                     Text(nextName, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, fontFamily = Plex)
                     // hours, minutes and seconds set apart so the clock reads at a glance
                     // always left-to-right (h:mm:ss), with thin gaps around the colons

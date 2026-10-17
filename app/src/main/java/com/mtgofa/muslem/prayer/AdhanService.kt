@@ -83,10 +83,17 @@ class AdhanService : Service() {
         val inCall = am.mode == AudioManager.MODE_IN_CALL || am.mode == AudioManager.MODE_IN_COMMUNICATION
         if (inCall && Settings.muteInCall) { finish(); return }
 
+        // on the ringtone volume, a silent or vibrating phone stays quiet unless the user chose
+        // to hear the adhan anyway (then it plays on the alarm volume)
+        if (!Settings.adhanInSilent && am.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
+            if (am.ringerMode == AudioManager.RINGER_MODE_VIBRATE) vibrate()
+            finish(); return
+        }
+
         if (fullAdhan) {
-            startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), Settings.adhanVolume, repeats = 1)
+            startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
         } else {
-            startSound(tasbeehUri(this), Settings.alertVolume, repeats = 2)
+            startSound(tasbeehUri(this), repeats = 2)
         }
     }
 
@@ -96,26 +103,30 @@ class AdhanService : Service() {
         _sounding.value = Sounding(null, null, title)
         startInForeground(buildNote("تجربة الصوت", title, ongoing = true, fullScreen = false))
         finishedNote = null
-        if (muezzin != null) startSound(Muezzins.uri(this, Muezzins.byId(muezzin)), Settings.adhanVolume, 1)
-        else startSound(tasbeehUri(this), Settings.alertVolume, 2)
+        if (muezzin != null) startSound(Muezzins.uri(this, Muezzins.byId(muezzin)), 1)
+        else startSound(tasbeehUri(this), 2)
     }
 
-    private fun startSound(uri: Uri, volume: Int, repeats: Int) {
+    private fun vibrate() {
+        val v = getSystemService(android.os.Vibrator::class.java) ?: return
+        v.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 400, 250, 400, 250, 400), -1))
+    }
+
+    /** Volume follows the phone: the ringtone volume, or the alarm volume when set to play in silent mode. */
+    private fun startSound(uri: Uri, repeats: Int) {
         releasePlayer()
         repeatsLeft = repeats
         val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setUsage(if (Settings.adhanInSilent) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build()
         val am = getSystemService(AudioManager::class.java)
         focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
             .setAudioAttributes(attrs).build().also { am.requestAudioFocus(it) }
-        val v = (volume.coerceIn(0, 100) / 100f).let { it * it } // perceptual curve
         try {
             player = MediaPlayer().apply {
                 setAudioAttributes(attrs)
                 setDataSource(this@AdhanService, uri)
-                setVolume(v, v)
                 setOnCompletionListener {
                     repeatsLeft--
                     if (repeatsLeft > 0) main.postDelayed({ runCatching { it.seekTo(0); it.start() } }, 350)

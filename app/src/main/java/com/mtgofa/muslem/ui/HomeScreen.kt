@@ -87,6 +87,9 @@ private val AR_DAYS = listOf("الإثنين", "الثلاثاء", "الأربع
 private val AR_MONTHS = listOf("يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر")
 fun gregorian(d: LocalDate) = "${AR_DAYS[d.dayOfWeek.value - 1]} ${arabicDigits(d.dayOfMonth)} ${AR_MONTHS[d.monthValue - 1]} ${arabicDigits(d.year)}"
 
+/** How long after an adhan the header keeps counting up from it. */
+private val SINCE_WINDOW: Duration = Duration.ofMinutes(20)
+
 fun countdown(d: Duration): String {
     val s = d.seconds.coerceAtLeast(0)
     return "%02d:%02d:%02d".format(java.util.Locale.US, s / 3600, (s / 60) % 60, s % 60)
@@ -115,20 +118,29 @@ fun HomeScreen(
     ) {
         item {
             // the previous prayer (possibly yesterday's Isha) to measure progress toward the next
-            val prev = remember(today, changes, next) {
-                val all = Scheduler.times(today.minusDays(1)).times.values + Scheduler.times(today).times.values
-                all.filter { !it.isAfter(now) }.maxOrNull() ?: now.minusHours(6)
+            val (prevPrayer, prev) = remember(today, changes, next) {
+                val all = Scheduler.times(today.minusDays(1)).times.entries + Scheduler.times(today).times.entries
+                all.filter { !it.value.isAfter(now) }.maxByOrNull { it.value }?.toPair() ?: (Prayer.ISHA to now.minusHours(6))
             }
             val total = Duration.between(prev, nextAt).seconds.coerceAtLeast(1)
+            val since = Duration.between(prev, now)
+            // for a while after an adhan the header counts up ("الظهر منذ") before moving on
+            val justCalled = prevPrayer.hasAdhan && since < SINCE_WINDOW
             PrayerHeader(
                 period = SkyPeriod.of(Scheduler.currentPrayer(now)),
                 location = Settings.locationName,
                 hijri = Hijri.of(today).toString(),
                 date = gregorian(today),
-                nextName = if (next == Prayer.SUNRISE) "الشروق" else next.label(nextAt.toLocalDate()),
-                nextTime = "${clock(nextAt)} ${ampm(nextAt)}",
-                remaining = countdown(Duration.between(now, nextAt)),
-                progress = 1f - Duration.between(now, nextAt).seconds.toFloat() / total,
+                label = if (justCalled) "أُذّن للصلاة" else "الصلاة القادمة",
+                nextName = when {
+                    justCalled -> "${prevPrayer.label(prev.toLocalDate())} منذ"
+                    next == Prayer.SUNRISE -> "الشروق"
+                    else -> next.label(nextAt.toLocalDate())
+                },
+                nextTime = if (justCalled) "${clock(prev)} ${ampm(prev)}" else "${clock(nextAt)} ${ampm(nextAt)}",
+                remaining = if (justCalled) countdown(since) else countdown(Duration.between(now, nextAt)),
+                progress = if (justCalled) since.seconds.toFloat() / SINCE_WINDOW.seconds
+                    else 1f - Duration.between(now, nextAt).seconds.toFloat() / total,
                 onLocation = onLocation,
             )
         }

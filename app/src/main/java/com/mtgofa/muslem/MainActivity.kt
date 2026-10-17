@@ -136,6 +136,12 @@ private fun App(openMushaf: MutableStateFlow<Boolean>) {
         QuranPlayer.reconnect(ctx)
         Updater.check(silent = true)
         com.mtgofa.muslem.data.Content.sync()
+        withContext(Dispatchers.IO) {
+            val fajr = com.mtgofa.muslem.prayer.Muezzins.byId(Settings.fajrMuezzin)
+            if (Settings.fajrMuezzin.isNotEmpty() && !com.mtgofa.muslem.prayer.Muezzins.isAvailable(ctx, fajr)) {
+                com.mtgofa.muslem.prayer.Muezzins.download(ctx, fajr)
+            }
+        }
     }
     val stack = remember { mutableStateListOf<Route>(Route.Tabs) }
     var tab by remember { mutableStateOf(0) }

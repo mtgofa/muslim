@@ -88,17 +88,18 @@ object Settings {
         set(v) = edit { putString("muezzin", v) }
     /** separate voice for Fajr ("" = same as the others) */
     var fajrMuezzin: String
-        get() = sp.getString("fajrMuezzin", "")!!
+        // default: a Fajr recording, which includes "الصلاة خير من النوم"
+        get() = sp.getString("fajrMuezzin", DEFAULT_FAJR)!!
         set(v) = edit { putString("fajrMuezzin", v) }
     /** The voice that calls this prayer (Fajr may have its own). */
+    const val DEFAULT_FAJR = "fajr_chebae"
+
     fun muezzinFor(p: Prayer) = if (p == Prayer.FAJR && fajrMuezzin.isNotEmpty()) fajrMuezzin else muezzin
 
-    var adhanVolume: Int
-        get() = sp.getInt("adhanVol", 100)
-        set(v) = edit { putInt("adhanVol", v) }
-    var alertVolume: Int
-        get() = sp.getInt("alertVol", 90)
-        set(v) = edit { putInt("alertVol", v) }
+    /** play the adhan and reminders even when the phone is silent (on the alarm volume) */
+    var adhanInSilent: Boolean
+        get() = sp.getBoolean("adhanInSilent", false)
+        set(v) = edit { putBoolean("adhanInSilent", v) }
     /** a persistent notification that keeps the app alive and shows the next prayer */
     var keepAlive: Boolean
         get() = sp.getBoolean("keepAlive", true)
