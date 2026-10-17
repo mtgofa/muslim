@@ -89,7 +89,7 @@ fun gregorian(d: LocalDate) = "${AR_DAYS[d.dayOfWeek.value - 1]} ${arabicDigits(
 
 fun countdown(d: Duration): String {
     val s = d.seconds.coerceAtLeast(0)
-    return "%d:%02d:%02d".format(java.util.Locale.US, s / 3600, (s / 60) % 60, s % 60)
+    return "%02d:%02d:%02d".format(java.util.Locale.US, s / 3600, (s / 60) % 60, s % 60)
 }
 
 @Composable

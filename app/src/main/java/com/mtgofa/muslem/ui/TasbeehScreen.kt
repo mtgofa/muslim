@@ -203,10 +203,10 @@ fun TasbeehScreen(onBack: () -> Unit) {
             ) {
                 // in RTL the first child sits on the right: keep a matching gap there so the
                 // button stays centred, and the target box lands on its left
-                Spacer(Modifier.width(68.dp))
+                Spacer(Modifier.width(56.dp))
                 TasbeehButton(count, progress, onTap = ::tap)
-                Spacer(Modifier.width(10.dp))
-                TargetBox(target, Modifier.width(58.dp))
+                Spacer(Modifier.width(8.dp))
+                TargetBox(target, Modifier.width(56.dp))
             }
         }
 
@@ -263,7 +263,7 @@ private fun Option(icon: ImageVector, title: String, state: String, on: Boolean,
 private fun TasbeehButton(count: Int, progress: Float, onTap: () -> Unit) {
     Box(
         Modifier
-            .size(224.dp)
+            .size(268.dp)
             .clip(CircleShape)
             .clickable(remember { MutableInteractionSource() }, ripple(color = Palette.Gold)) { onTap() },
         contentAlignment = Alignment.Center,
@@ -284,12 +284,12 @@ private fun TasbeehButton(count: Int, progress: Float, onTap: () -> Unit) {
             drawPath(star(r, -PI / 2), Brush.linearGradient(listOf(Color(0xFFE7CF95), Color(0xFFB8893A))))
             drawPath(star(r * 0.93f, -PI / 2), Brush.linearGradient(listOf(Color(0xFF1E7D57), Color(0xFF0B3A2C))))
             drawPath(star(r * 0.86f, -PI / 2), Color(0xFFC49A45), style = androidx.compose.ui.graphics.drawscope.Stroke(1.5.dp.toPx()))
-            val face = r * 0.66f
-            drawCircle(Brush.radialGradient(listOf(Color(0xFF2A8A63), Color(0xFF0E4A37)), center = c, radius = face), radius = face, center = c)
+            val face = r * 0.68f
+            drawCircle(Brush.radialGradient(listOf(Color.White, Color(0xFFF1F6F2)), center = c, radius = face), radius = face, center = c)
             // progress of the current round around the face
             val ring = face + 7.dp.toPx()
             drawArc(
-                Color(0x33FFFFFF), 0f, 360f, false, topLeft = Offset(c.x - ring, c.y - ring), size = Size(ring * 2, ring * 2),
+                Color(0x40FFFFFF), 0f, 360f, false, topLeft = Offset(c.x - ring, c.y - ring), size = Size(ring * 2, ring * 2),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(4.dp.toPx()),
             )
             drawArc(
@@ -302,7 +302,7 @@ private fun TasbeehButton(count: Int, progress: Float, onTap: () -> Unit) {
                 drawCircle(Color(0xFFF2D59B), radius = 2.5.dp.toPx(), center = Offset(c.x + (r * 0.8f * cos(a)).toFloat(), c.y + (r * 0.8f * sin(a)).toFloat()))
             }
         }
-        Text(count.toString(), fontSize = 58.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Color.White)
+        Text(count.toString(), fontSize = 76.sp, fontWeight = FontWeight.Bold, fontFamily = Plex, color = Palette.EmeraldDark)
     }
 }
 

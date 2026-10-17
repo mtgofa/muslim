@@ -213,9 +213,12 @@ fun PrayerHeader(
                     // hours, minutes and seconds set apart so the clock reads at a glance
                     // always left-to-right (h:mm:ss), with thin gaps around the colons
                     Text(
-                        remaining.replace(":", "\u2009:\u2009"), color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold,
+                        remaining.replace(":", "\u2009:\u2009"), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold,
                         fontFamily = Plex, letterSpacing = 1.sp, maxLines = 1,
-                        style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Ltr),
+                        // tabular digits: every digit has the same width, so the clock never shifts
+                        style = androidx.compose.ui.text.TextStyle(
+                            textDirection = androidx.compose.ui.text.style.TextDirection.Ltr, fontFeatureSettings = "tnum",
+                        ),
                     )
                     Text(nextTime, color = Color(0xFFF2D59B), style = MaterialTheme.typography.titleSmall)
                 }
