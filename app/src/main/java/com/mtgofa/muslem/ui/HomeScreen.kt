@@ -79,7 +79,8 @@ fun prayerIcon(p: Prayer): ImageVector = when (p) {
 private val TIME = DateTimeFormatter.ofPattern("h:mm", Locale.US)
 private val AMPM = DateTimeFormatter.ofPattern("a", Locale.US)
 
-fun clock(t: ZonedDateTime) = arabicDigits(t.format(TIME))
+/** Times use Western digits (12:05), like a digital clock. */
+fun clock(t: ZonedDateTime): String = t.format(TIME)
 fun ampm(t: ZonedDateTime) = if (t.format(AMPM) == "AM") "ص" else "م"
 
 private val AR_DAYS = listOf("الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد")
@@ -88,7 +89,7 @@ fun gregorian(d: LocalDate) = "${AR_DAYS[d.dayOfWeek.value - 1]} ${arabicDigits(
 
 fun countdown(d: Duration): String {
     val s = d.seconds.coerceAtLeast(0)
-    return arabicDigits("%d:%02d:%02d".format(s / 3600, (s / 60) % 60, s % 60))
+    return "%d:%02d:%02d".format(java.util.Locale.US, s / 3600, (s / 60) % 60, s % 60)
 }
 
 @Composable

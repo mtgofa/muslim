@@ -227,7 +227,7 @@ class AdhanService : Service() {
         private fun prayerWord(p: Prayer) = if (p == Prayer.SUNRISE) "" else "أذان"
 
         fun formatTime(millis: Long): String =
-            arabicDigits(Instant.ofEpochMilli(millis).atZone(Settings.zone).format(TIME_FMT))
+            Instant.ofEpochMilli(millis).atZone(Settings.zone).format(TIME_FMT)
                 .replace("AM", "ص").replace("PM", "م")
 
         private val TIME_FMT = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
