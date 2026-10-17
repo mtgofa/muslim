@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.mtgofa.muslem.ui
 
 import android.content.ClipData
@@ -12,6 +14,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -269,9 +272,14 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     Text("سورة $sura", style = MaterialTheme.typography.titleMedium, color = barInk)
                     Text("صفحة ${arabicDigits(page)} · الجزء ${arabicDigits(QuranDb.juzOfPage(page))}", style = MaterialTheme.typography.bodySmall, color = barSoft, maxLines = 1)
                 }
-                BarIcon(Icons.Rounded.Lightbulb, "معاني الكلمات", if (wordMode) Palette.Gold else barInk) {
-                    wordMode = !wordMode; word = null; if (wordMode) chrome = false
-                }
+                // tap: meanings mode on/off; long-press: every meaning on this page
+                Box(
+                    Modifier.size(52.dp).clip(CircleShape).combinedClickable(
+                        onClick = { wordMode = !wordMode; word = null; if (wordMode) chrome = false },
+                        onLongClick = { sheet = "meanings" },
+                    ),
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Lightbulb, "معاني الكلمات", tint = if (wordMode) Palette.Gold else barInk, modifier = Modifier.size(29.dp)) }
                 BarIcon(Icons.Rounded.Search, "الفهرس والبحث", barInk) { sheet = "index" }
                 BarIcon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", if (marked) Palette.Gold else barInk) {
                     Settings.toggleBookmark(page)
@@ -292,7 +300,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
             }
         }
         // ---- meanings mode: the tapped word's meaning, and a way to see the whole page
-        if (wordMode) Column(
+        if (wordMode && word != null) Column(
             Modifier.align(Alignment.BottomCenter).fillMaxWidth().navigationBarsPadding()
                 .padding(start = 14.dp, end = 14.dp, bottom = if (chrome) 96.dp else 34.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -308,21 +316,6 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(6.dp))
                 Text(w.first.meaning, style = MaterialTheme.typography.bodyLarge, fontSize = 18.sp, lineHeight = 28.sp, color = Color.White)
-            } else Text(
-                "اضغط على كلمة مظلّلة لمعرفة معناها",
-                style = MaterialTheme.typography.labelLarge, color = Color.White,
-                modifier = Modifier.clip(CircleShape).background(BarDark).padding(horizontal = 16.dp, vertical = 10.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    "كل معاني الصفحة", style = MaterialTheme.typography.labelLarge, color = BarDark,
-                    modifier = Modifier.clip(CircleShape).background(Color(0xFFF2D59B)).clickable { sheet = "meanings" }.padding(horizontal = 16.dp, vertical = 9.dp),
-                )
-                Text(
-                    "إنهاء", style = MaterialTheme.typography.labelLarge, color = Color.White,
-                    modifier = Modifier.clip(CircleShape).background(BarDark).clickable { wordMode = false; word = null }.padding(horizontal = 16.dp, vertical = 9.dp),
-                )
             }
         }
         play.error?.let { err ->
