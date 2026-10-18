@@ -110,6 +110,10 @@ import com.mtgofa.muslem.quran.MushafStyle
 import com.mtgofa.muslem.quran.QuranDb
 import com.mtgofa.muslem.quran.QuranPlayer
 import com.mtgofa.muslem.quran.Reciters
+import com.mtgofa.muslem.quran.Tafsir
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.TextButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -457,11 +461,16 @@ private fun AyahSheet(a: AyahRef, onDismiss: () -> Unit, onRepeat: () -> Unit) {
                 modifier = Modifier.background(Palette.Paper, RoundedCornerShape(16.dp)).padding(14.dp).fillMaxWidth(),
             )
             val meanings = remember(a) { com.mtgofa.muslem.data.Meanings.of(a.sura, a.ayah) }
-            if (meanings.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Text("معاني الكلمات", style = MaterialTheme.typography.titleSmall, color = Palette.Gold)
-                Spacer(Modifier.height(6.dp))
-                meanings.forEach { MeaningRow(it) }
+            // word meanings | tafsir; the last tab chosen stays chosen for the next ayah
+            var tab by remember { mutableStateOf(if (meanings.isEmpty()) AyahTab.TAFSIR else lastAyahTab) }
+            Spacer(Modifier.height(12.dp))
+            Segmented(AyahTab.entries, tab, { it.label }) { tab = it; lastAyahTab = it }
+            Spacer(Modifier.height(8.dp))
+            when (tab) {
+                AyahTab.MEANINGS ->
+                    if (meanings.isEmpty()) Text("لا توجد كلمات غريبة في هذه الآية", style = MaterialTheme.typography.bodyMedium, color = Palette.Muted, modifier = Modifier.padding(vertical = 8.dp))
+                    else meanings.forEach { MeaningRow(it) }
+                AyahTab.TAFSIR -> TafsirPane(a)
             }
             Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -489,6 +498,39 @@ private fun AyahSheet(a: AyahRef, onDismiss: () -> Unit, onRepeat: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+private enum class AyahTab(val label: String) { MEANINGS("معاني الكلمات"), TAFSIR("التفسير") }
+
+private var lastAyahTab = AyahTab.MEANINGS
+
+/** The ayah's tafsir; the first time, downloads the tafsir file (once, about half a megabyte). */
+@Composable
+private fun TafsirPane(a: AyahRef) {
+    val ctx = LocalContext.current
+    val state by Tafsir.state.collectAsState()
+    LaunchedEffect(Unit) { Tafsir.refresh(ctx); if (Tafsir.state.value is Tafsir.State.Missing) Tafsir.download(ctx) }
+    val scope = rememberCoroutineScope()
+    when (val st = state) {
+        Tafsir.State.Ready -> {
+            val text by produceState<String?>(null, a) { value = Tafsir.of(ctx, a.sura, a.ayah) }
+            Text(
+                text ?: "", style = MaterialTheme.typography.bodyLarge, lineHeight = 30.sp,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).heightIn(min = 60.dp),
+            )
+            Text(Tafsir.NAME, style = MaterialTheme.typography.labelMedium, color = Palette.Muted)
+        }
+        is Tafsir.State.Downloading -> Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+            Text("جاري تحميل التفسير لمرة واحدة…", style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
+            Spacer(Modifier.height(8.dp))
+            LinearProgressIndicator(progress = { st.progress }, modifier = Modifier.fillMaxWidth(), color = Palette.Emerald, trackColor = Palette.EmeraldSoft)
+        }
+        is Tafsir.State.Failed -> Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+            Text(st.reason, style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
+            TextButton(onClick = { scope.launch { Tafsir.download(ctx) } }) { Text("إعادة المحاولة") }
+        }
+        Tafsir.State.Missing -> Unit
     }
 }
 
