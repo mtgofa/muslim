@@ -90,7 +90,7 @@ private sealed interface WirdPage {
 
 /** All khatmas, adding one, and each khatma's progress. */
 @Composable
-fun WirdScreen(onBack: () -> Unit, onRead: (Int) -> Unit) {
+fun WirdScreen(onBack: () -> Unit, onRead: (Khatma) -> Unit) {
     val changes by Wird.changes.collectAsState()
     var page by remember { mutableStateOf<WirdPage>(if (Wird.all.isEmpty()) WirdPage.Add else WirdPage.List) }
     fun back() {
@@ -114,7 +114,7 @@ fun WirdScreen(onBack: () -> Unit, onRead: (Int) -> Unit) {
                 is WirdPage.Detail -> {
                     val k = Wird.byId(p.id)
                     if (k == null) page = WirdPage.List
-                    else KhatmaDetail(k, onRead = { onRead(k.next.coerceAtMost(Wird.LAST_PAGE)) }, onEdit = { page = WirdPage.Edit(k.id) }) {
+                    else KhatmaDetail(k, onRead = { onRead(k) }, onEdit = { page = WirdPage.Edit(k.id) }) {
                         page = if (Wird.all.isEmpty()) WirdPage.Add else WirdPage.List
                     }
                 }
@@ -124,9 +124,9 @@ fun WirdScreen(onBack: () -> Unit, onRead: (Int) -> Unit) {
 }
 
 @Composable
-private fun KhatmaList(onOpen: (Long) -> Unit, onAdd: () -> Unit, onRead: (Int) -> Unit) {
+private fun KhatmaList(onOpen: (Long) -> Unit, onAdd: () -> Unit, onRead: (Khatma) -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(Wird.all, key = { it.id }) { k -> KhatmaCard(k, { onOpen(k.id) }, { onRead(k.next) }) }
+        items(Wird.all, key = { it.id }) { k -> KhatmaCard(k, { onOpen(k.id) }, { onRead(k) }) }
         item {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).border(1.5.dp, Palette.Emerald, RoundedCornerShape(20.dp))

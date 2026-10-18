@@ -119,11 +119,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
-fun MushafScreen(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
+fun MushafScreen(startPage: Int, focus: AyahRef?, wird: Long, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val pack by MushafPack.state.collectAsState()
     LaunchedEffect(Unit) { MushafPack.refresh(ctx) }
-    if (pack is MushafPack.State.Ready) MushafReader(startPage, focus, onBack) else PackGate(pack, onBack)
+    if (pack is MushafPack.State.Ready) MushafReader(startPage, focus, wird, onBack) else PackGate(pack, onBack)
 }
 
 /** First open: the page fonts are fetched once (≈70 MB) and then work offline forever. */
@@ -172,7 +172,11 @@ private fun PackGate(st: MushafPack.State, onBack: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
+/**
+ * [wird] != 0: reading that khatma's wird — its status shows in the header and turning past its
+ * next page records it; the ordinary reading place is left alone. Otherwise the reverse.
+ */
+private fun MushafReader(startPage: Int, focus: AyahRef?, wird: Long, onBack: () -> Unit) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     val changes by Settings.changes.collectAsState()
@@ -212,9 +216,9 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
         var prev = pager.currentPage + 1
         snapshotFlow { pager.currentPage }.collect {
             val now = it + 1
-            Settings.lastPage = now
-            // turning forward past the next wird page records it as read
-            com.mtgofa.muslem.data.Wird.onPageTurn(ctx, prev, now)
+            // turning forward past the wird's next page records it as read
+            if (wird != 0L) com.mtgofa.muslem.data.Wird.onPageTurn(ctx, wird, prev, now)
+            else Settings.lastPage = now
             prev = now
         }
     }
@@ -251,7 +255,7 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, onBack: () -> Unit) {
                     // juz on the right, surah name on the left, as printed; the wird between them
                     Row(Modifier.fillMaxWidth().clickable { chrome = !chrome }.padding(horizontal = 4.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("الجزء ${JUZ_NAMES[QuranDb.juzOfPage(p) - 1]}", color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                        key(wirdRev) { WirdBadge(p) }
+                        if (wird != 0L) key(wirdRev) { WirdBadge(p, wird) }
                         Text(suraName, color = Color(0xFF2A2A2A), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f), textAlign = TextAlign.End)
                     }
                     val hl = if (sheet == "ayah" && selected != null) selected else if (play.active && play.current != null) play.current else selected
@@ -929,11 +933,11 @@ private fun BarIcon(icon: ImageVector, label: String, tint: Color, onClick: () -
     }
 }
 
-/** The daily wird's status in the page header; on the khatma's last page, a button to record it. */
+/** The status of the khatma being read, in the page header; on the khatma's last page, a button to record it. */
 @Composable
-private fun WirdBadge(page: Int) {
+private fun WirdBadge(page: Int, id: Long) {
     val ctx = LocalContext.current
-    val k = com.mtgofa.muslem.data.Wird.forPage(page) ?: return
+    val k = com.mtgofa.muslem.data.Wird.byId(id) ?: return
     val color = when { k.onTrack -> Palette.Emerald; k.behind > 0 -> Color(0xFFC0392B); else -> Color(0xFFB8893A) }
     Row(
         Modifier.clip(CircleShape).background(color).padding(horizontal = 12.dp, vertical = 3.dp),

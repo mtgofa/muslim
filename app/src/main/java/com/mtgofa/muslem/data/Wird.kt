@@ -214,9 +214,9 @@ object Wird {
     fun remove(ctx: Context, id: Long) { save(all.filter { it.id != id }); schedule(ctx) }
 
     /** The reader turned from [from] to [to]; any khatma waiting on [from] moves on. */
-    fun onPageTurn(ctx: Context, from: Int, to: Int) {
+    fun onPageTurn(ctx: Context, id: Long, from: Int, to: Int) {
         if (to != from + 1) return
-        all.filter { !it.complete && it.next == from }.forEach { markRead(ctx, it.id) }
+        byId(id)?.takeIf { !it.complete && it.next == from }?.let { markRead(ctx, it.id) }
     }
 
     /** Record a khatma's next page as read (also for the last page, which has nothing after it). */
@@ -226,15 +226,6 @@ object Wird {
         val updated = k.copy(next = k.next + 1, todayDay = today, todayPages = k.pagesToday + 1)
         replace(updated)
         if (updated.leftPages == 0) ctx.getSystemService(NotificationManager::class.java).cancel(noteId(id))
-    }
-
-    /** The khatma to show on [page]: one waiting on this page, else the closest one. */
-    fun forPage(page: Int): Khatma? = active.minByOrNull {
-        when {
-            it.next == page -> -1
-            it.next > page -> it.next - page
-            else -> 1000 + page - it.next
-        }
     }
 
     // ---- daily reminders ----------------------------------------------------------------------
@@ -269,7 +260,7 @@ object Wird {
         active.filter { it.remind >= 0 && (minute - it.remind + 1440) % 1440 <= 5 && (it.leftPages > 0 || it.behind > 0) }.forEach { k ->
             val open = PendingIntent.getActivity(
                 ctx, noteId(k.id),
-                Intent(ctx, MainActivity::class.java).putExtra("openMushaf", true).putExtra("page", k.next)
+                Intent(ctx, MainActivity::class.java).putExtra("openMushaf", true).putExtra("page", k.next.coerceAtMost(LAST_PAGE)).putExtra("wird", k.id)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )

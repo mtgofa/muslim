@@ -117,7 +117,7 @@ fun HomeScreen(
     onHisn: () -> Unit,
     onSettings: () -> Unit,
     onWird: () -> Unit,
-    onReadWird: (Int) -> Unit,
+    onReadWird: (com.mtgofa.muslem.data.Khatma) -> Unit,
     onFasting: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -254,7 +254,7 @@ fun HomeScreen(
 
 /** Active khatmas side by side, one card in view, with a dot per khatma underneath. */
 @Composable
-private fun KhatmaSlider(list: List<com.mtgofa.muslem.data.Khatma>, onOpen: () -> Unit, onRead: (Int) -> Unit) {
+private fun KhatmaSlider(list: List<com.mtgofa.muslem.data.Khatma>, onOpen: () -> Unit, onRead: (com.mtgofa.muslem.data.Khatma) -> Unit) {
     val pager = androidx.compose.foundation.pager.rememberPagerState { list.size }
     Column(Modifier.padding(vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         androidx.compose.foundation.pager.HorizontalPager(
@@ -262,7 +262,7 @@ private fun KhatmaSlider(list: List<com.mtgofa.muslem.data.Khatma>, onOpen: () -
             contentPadding = PaddingValues(horizontal = 16.dp),
             pageSpacing = 10.dp,
             verticalAlignment = Alignment.Top,
-        ) { i -> val k = list[i]; KhatmaCard(k, onOpen) { onRead(k.next) } }
+        ) { i -> val k = list[i]; KhatmaCard(k, onOpen) { onRead(k) } }
         if (list.size > 1) Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             repeat(list.size) { i ->
                 val on = i == pager.currentPage

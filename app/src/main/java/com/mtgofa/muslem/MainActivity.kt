@@ -98,7 +98,8 @@ sealed interface Route {
     data object Reliability : Route
     data object Reciters : Route
     data object About : Route
-    data class Mushaf(val page: Int, val focus: AyahRef?) : Route
+    /** [wird]: the khatma being read (0 = ordinary reading, which keeps its own place) */
+    data class Mushaf(val page: Int, val focus: AyahRef?, val wird: Long = 0) : Route
     data object Hisn : Route
     data object Qibla : Route
     data object QuranIndex : Route
@@ -114,6 +115,8 @@ class MainActivity : ComponentActivity() {
     private val openMushaf = MutableStateFlow(false)
     /** page to open the Mushaf at (from the wird reminder), 0 = last read */
     private val openPage = MutableStateFlow(0)
+    /** the khatma the reminder was for, 0 = none */
+    private val openWird = MutableStateFlow(0L)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -124,13 +127,15 @@ class MainActivity : ComponentActivity() {
         Settings.init(this)
         openMushaf.value = intent?.getBooleanExtra("openMushaf", false) == true
         openPage.value = intent?.getIntExtra("page", 0) ?: 0
-        setContent { MuslemTheme { App(openMushaf, openPage) } }
+        openWird.value = intent?.getLongExtra("wird", 0L) ?: 0L
+        setContent { MuslemTheme { App(openMushaf, openPage, openWird) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.getBooleanExtra("openMushaf", false)) {
             openPage.value = intent.getIntExtra("page", 0)
+            openWird.value = intent.getLongExtra("wird", 0L)
             openMushaf.value = true
         }
     }
@@ -142,7 +147,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlow<Int>) {
+private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlow<Int>, openWird: MutableStateFlow<Long>) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var dbReady by remember { mutableStateOf(false) }
@@ -174,9 +179,10 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
         if (wantMushaf && dbReady) {
             openMushaf.value = false
             val page = openPage.value.takeIf { it > 0 } ?: Settings.lastPage
-            openPage.value = 0
+            val wird = openWird.value
+            openPage.value = 0; openWird.value = 0
             if (stack.lastOrNull() is Route.Mushaf) stack.removeAt(stack.lastIndex)
-            push(Route.Mushaf(page, null))
+            push(Route.Mushaf(page, null, wird))
         }
     }
 
@@ -212,7 +218,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                     onSettings = { push(Route.Settings) },
                     onWird = { push(Route.Wird) },
                     onFasting = { push(Route.Fasting) },
-                    onReadWird = { push(Route.Mushaf(it, null)) },
+                    onReadWird = { push(Route.Mushaf(it.next.coerceAtMost(com.mtgofa.muslem.data.Wird.LAST_PAGE), null, it.id)) },
                 )
                 Route.QuranIndex -> QuranIndexScreen(onBack = ::pop) { page, s, a ->
                     push(Route.Mushaf(page, if (s != null && a != null && a > 1) AyahRef(s, a) else null))
@@ -234,10 +240,10 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                 Route.Reliability -> ReliabilityScreen(::pop)
                 Route.Reciters -> RecitersScreen(::pop)
                 Route.About -> AboutScreen(::pop)
-                is Route.Mushaf -> MushafScreen(route.page, route.focus, ::pop)
+                is Route.Mushaf -> MushafScreen(route.page, route.focus, route.wird, ::pop)
                 Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }
                 Route.Qibla -> QiblaScreen(::pop)
-                Route.Wird -> WirdScreen(::pop) { push(Route.Mushaf(it, null)) }
+                Route.Wird -> WirdScreen(::pop) { push(Route.Mushaf(it.next.coerceAtMost(com.mtgofa.muslem.data.Wird.LAST_PAGE), null, it.id)) }
                 Route.Fasting -> FastingScreen(::pop)
                 is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
