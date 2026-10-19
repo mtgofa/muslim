@@ -35,7 +35,7 @@ import java.util.Locale
 data class Sounding(val prayer: Prayer?, val type: EventType?, val title: String, val alarm: Boolean = false)
 
 /**
- * Plays the adhan, the "سبحان الله" reminders and the iqama alert as a foreground service on
+ * Plays the adhan, the short reminders and the iqama alert as a foreground service on
  * the alarm audio stream, so it is heard even when media volume is down and is never killed
  * mid-adhan.
  */
@@ -135,29 +135,29 @@ class AdhanService : Service() {
 
         when {
             fullAdhan -> startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
-            // the iqama alert calls the iqama itself; reminders say "سبحان الله"
-            type == EventType.IQAMA -> startSound(rawUri(R.raw.iqama), repeats = 1)
-            else -> startSound(tasbeehUri(this), repeats = 1)
+            type == EventType.IQAMA -> startSound(Settings.iqamaSound.uri(this), repeats = 1)
+            else -> startSound(Settings.preSound.uri(this), repeats = 1)
         }
     }
 
-    /** The night prayer alarm: «سبحان الله» on the alarm volume a few times, or vibration only. */
+    /** The night prayer alarm: its sound on the alarm volume a few times, or vibration only. */
     private fun qiyam() {
         _sounding.value = Sounding(null, null, "قيام الليل", alarm = true)
         startInForeground(buildNote("قيام الليل", "﴿وَبِالْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ﴾", ongoing = true, fullScreen = true))
         finishedNote = null
         if (Settings.qiyamVibrate) vibrateAlert(Haptics.QIYAM)
-        else startSound(tasbeehUri(this), repeats = 6, alarm = true, gapMs = 1500)
+        else startSound(Settings.qiyamSound.uri(this), repeats = if (Settings.qiyamSound == AlertSound.TASBEEH) 6 else 3, alarm = true, gapMs = 1500)
     }
 
     private fun preview(intent: Intent) {
         val muezzin = intent.getStringExtra("muezzin")
-        val title = if (muezzin != null) Muezzins.byId(muezzin).name else "سبحان الله"
+        val sound = AlertSound.of(intent.getStringExtra("sound"), AlertSound.TASBEEH)
+        val title = if (muezzin != null) Muezzins.byId(muezzin).name else sound.ar
         _sounding.value = Sounding(null, null, title)
         startInForeground(buildNote("تجربة الصوت", title, ongoing = true, fullScreen = false))
         finishedNote = null
         if (muezzin != null) startSound(Muezzins.uri(this, Muezzins.byId(muezzin)), 1)
-        else startSound(tasbeehUri(this), 1)
+        else startSound(sound.uri(this), 1)
     }
 
     private fun rawUri(res: Int): Uri = Uri.parse("android.resource://$packageName/$res")
@@ -284,11 +284,12 @@ class AdhanService : Service() {
             if (_sounding.value != null) ctx.startService(Intent(ctx, AdhanService::class.java).setAction(ACTION_STOP))
         }
 
-        /** Play a muezzin (or the "سبحان الله" clip when [muezzinId] is null) for the settings page. */
-        fun preview(ctx: Context, muezzinId: String?) {
+        /** Play a muezzin, or an alert sound when [muezzinId] is null, for the settings pages. */
+        fun preview(ctx: Context, muezzinId: String?, sound: AlertSound = AlertSound.TASBEEH) {
             androidx.core.content.ContextCompat.startForegroundService(
                 ctx, Intent(ctx, AdhanService::class.java).setAction(ACTION_PREVIEW).apply {
                     if (muezzinId != null) putExtra("muezzin", muezzinId)
+                    putExtra("sound", sound.name)
                 },
             )
         }

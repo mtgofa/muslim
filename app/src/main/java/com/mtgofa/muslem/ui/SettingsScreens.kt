@@ -1,5 +1,6 @@
 package com.mtgofa.muslem.ui
 
+import com.mtgofa.muslem.prayer.AlertSound
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -155,9 +156,9 @@ fun SettingsScreen(
                     Icons.Rounded.VolumeUp, Settings.adhanInSilent,
                 ) { Settings.adhanInSilent = it }
                 RowDivider()
-                SettingRow("تجربة «سبحان الله»", "صوت التنبيه قبل الأذان والإقامة", Icons.Rounded.Notifications, { AdhanService.preview(ctx, null) }) {
-                    Icon(Icons.Rounded.PlayArrow, null, tint = Palette.Emerald)
-                }
+                SettingRow("صوت التنبيه قبل الأذان", Settings.preSound.ar, Icons.Rounded.Notifications, { picker = "preSound" }) { Chevron() }
+                RowDivider()
+                SettingRow("صوت تنبيه الإقامة", Settings.iqamaSound.ar, Icons.Rounded.Notifications, { picker = "iqamaSound" }) { Chevron() }
                 RowDivider()
                 SwitchRow("إيقاف الأذان أثناء المكالمات", null, Icons.Rounded.Notifications, Settings.muteInCall) { Settings.muteInCall = it }
             }
@@ -191,6 +192,8 @@ fun SettingsScreen(
         "madhab" -> ChoiceSheet("حساب وقت العصر", AsrMadhab.entries, Settings.madhab, { it.ar }, { picker = null }) {
             Settings.madhab = it; Scheduler.schedule(ctx)
         }
+        "preSound" -> SoundSheet("صوت التنبيه قبل الأذان", AlertSound.FOR_ALERTS, Settings.preSound, { picker = null }) { Settings.preSound = it }
+        "iqamaSound" -> SoundSheet("صوت تنبيه الإقامة", AlertSound.FOR_IQAMA, Settings.iqamaSound, { picker = null }) { Settings.iqamaSound = it }
     }
 }
 
@@ -216,6 +219,37 @@ fun <T> ChoiceSheet(title: String, options: List<T>, selected: T, label: (T) -> 
     }
 }
 
+/** Pick an alert sound; tapping one selects it and plays it, so they can be compared. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SoundSheet(title: String, options: List<AlertSound>, selected: AlertSound, onDismiss: () -> Unit, onPick: (AlertSound) -> Unit) {
+    val ctx = LocalContext.current
+    val sounding by AdhanService.sounding.collectAsState()
+    var current by remember { mutableStateOf(selected) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { AdhanService.stopPreview(ctx) } }
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
+        Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+            options.forEach { o ->
+                val playing = sounding?.prayer == null && sounding?.alarm == false && sounding?.title == o.ar
+                Row(
+                    Modifier.fillMaxWidth().clickable { current = o; onPick(o); AdhanService.preview(ctx, null, o) }
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(o == current, { current = o; onPick(o); AdhanService.preview(ctx, null, o) })
+                    Text(o.ar, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { if (playing) AdhanService.stop(ctx) else AdhanService.preview(ctx, null, o) }) {
+                        Box(Modifier.size(36.dp).background(Palette.EmeraldSoft, CircleShape), contentAlignment = Alignment.Center) {
+                            Icon(if (playing) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, "استماع", tint = Palette.Emerald)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ============================================================================ per-prayer list
 
 @Composable
@@ -226,7 +260,7 @@ fun PrayersScreen(onBack: () -> Unit) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             TopBar("ضبط كل صلاة", onBack)
             Text(
-                "اختر الصلاة لتحديد الأذان أو «سبحان الله» أو الصمت، وتعديل الوقت، ومدة التنبيه قبل الأذان، وموعد الإقامة.",
+                "اختر الصلاة لتحديد الأذان أو تنبيه قصير أو الصمت، وتعديل الوقت، ومدة التنبيه قبل الأذان، وموعد الإقامة.",
                 style = MaterialTheme.typography.bodyMedium, color = Palette.Muted,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )

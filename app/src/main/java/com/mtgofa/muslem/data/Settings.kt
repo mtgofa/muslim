@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import java.time.ZoneId
 
 /** How a prayer time announces itself. */
-enum class AlertMode(val ar: String) { ADHAN("أذان كامل"), NOTIFY("تنبيه «سبحان الله»"), SILENT("بدون صوت") }
+enum class AlertMode(val ar: String) { ADHAN("أذان كامل"), NOTIFY("تنبيه قصير"), SILENT("بدون صوت") }
 
 /** All user settings, persisted in SharedPreferences. [changes] ticks on every write so UI recomposes. */
 object Settings {
@@ -73,7 +73,7 @@ object Settings {
     }.getOrDefault(AlertMode.ADHAN)
     fun setMode(p: Prayer, v: AlertMode) = edit { putString("mode_${p.name}", v.name) }
 
-    /** minutes before the adhan for a "سبحان الله" reminder; 0 = off */
+    /** minutes before the adhan for a short reminder ([preSound]); 0 = off */
     fun preAlert(p: Prayer) = sp.getInt("pre_${p.name}", if (p.hasAdhan) 10 else 0)
     fun setPreAlert(p: Prayer, v: Int) = edit { putInt("pre_${p.name}", v) }
 
@@ -136,6 +136,16 @@ object Settings {
     var qiyamVibrate: Boolean
         get() = sp.getBoolean("qiyamVibrate", false)
         set(v) = edit { putBoolean("qiyamVibrate", v) }
+    /** the sound of the reminders before the adhan (and of the short alert mode) */
+    var preSound: com.mtgofa.muslem.prayer.AlertSound
+        get() = com.mtgofa.muslem.prayer.AlertSound.of(sp.getString("preSound", null), com.mtgofa.muslem.prayer.AlertSound.TASBEEH)
+        set(v) = edit { putString("preSound", v.name) }
+    var iqamaSound: com.mtgofa.muslem.prayer.AlertSound
+        get() = com.mtgofa.muslem.prayer.AlertSound.of(sp.getString("iqamaSound", null), com.mtgofa.muslem.prayer.AlertSound.IQAMA)
+        set(v) = edit { putString("iqamaSound", v.name) }
+    var qiyamSound: com.mtgofa.muslem.prayer.AlertSound
+        get() = com.mtgofa.muslem.prayer.AlertSound.of(sp.getString("qiyamSound", null), com.mtgofa.muslem.prayer.AlertSound.TASBEEH)
+        set(v) = edit { putString("qiyamSound", v.name) }
     var adhanInSilent: Boolean
         get() = sp.getBoolean("adhanInSilent", false)
         set(v) = edit { putBoolean("adhanInSilent", v) }

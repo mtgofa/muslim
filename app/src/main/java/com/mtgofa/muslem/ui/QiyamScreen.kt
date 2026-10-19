@@ -58,6 +58,7 @@ fun QiyamScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
     var picking by remember { mutableStateOf(false) }
+    var pickingSound by remember { mutableStateOf(false) }
     val notifPerm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     // trying the alarm must not keep ringing after leaving the page
     DisposableEffect(Unit) { onDispose { AdhanService.stop(ctx) } }
@@ -117,7 +118,11 @@ fun QiyamScreen(onBack: () -> Unit) {
                 TonightCard()
                 SectionTitle("طريقة التنبيه")
                 Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(16.dp)) {
-                    Segmented(listOf(false, true), Settings.qiyamVibrate, { if (it) "اهتزاز فقط" else "صوت «سبحان الله»" }) { Settings.qiyamVibrate = it }
+                    Segmented(listOf(false, true), Settings.qiyamVibrate, { if (it) "اهتزاز فقط" else "صوت" }) { Settings.qiyamVibrate = it }
+                    if (!Settings.qiyamVibrate) {
+                        Spacer(Modifier.height(6.dp))
+                        SettingRow("الصوت", Settings.qiyamSound.ar, null, { pickingSound = true }) { Chevron() }
+                    }
                     Spacer(Modifier.height(8.dp))
                     Text(
                         if (Settings.qiyamVibrate) "اهتزاز متدرّج لربع دقيقة تقريباً، دون إزعاج من حولك"
@@ -132,6 +137,9 @@ fun QiyamScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+    if (pickingSound) SoundSheet("صوت تنبيه قيام الليل", com.mtgofa.muslem.prayer.AlertSound.FOR_ALERTS, Settings.qiyamSound, { pickingSound = false }) {
+        Settings.qiyamSound = it
     }
     if (picking) {
         val at = Settings.qiyamAt

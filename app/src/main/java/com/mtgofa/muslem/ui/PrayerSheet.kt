@@ -67,7 +67,7 @@ fun PrayerSheet(p: Prayer, onDismiss: () -> Unit) {
             Text(if (p.hasAdhan) "عند دخول الوقت" else "عند الشروق", style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
             Spacer(Modifier.height(8.dp))
             val modes = if (p.hasAdhan) AlertMode.entries else listOf(AlertMode.NOTIFY, AlertMode.SILENT)
-            Segmented(modes, Settings.mode(p), { when (it) { AlertMode.ADHAN -> "أذان"; AlertMode.NOTIFY -> "سبحان الله"; AlertMode.SILENT -> "صامت" } }) {
+            Segmented(modes, Settings.mode(p), { when (it) { AlertMode.ADHAN -> "أذان"; AlertMode.NOTIFY -> "تنبيه"; AlertMode.SILENT -> "صامت" } }) {
                 Settings.setMode(p, it); changed()
             }
 
@@ -75,7 +75,7 @@ fun PrayerSheet(p: Prayer, onDismiss: () -> Unit) {
             Line("تعديل الوقت", "قدّم أو أخّر الموعد بالدقائق ليطابق مسجدك") {
                 Stepper(Settings.offset(p), -30..30, format = ::signedMinutes) { Settings.setOffset(p, it); changed() }
             }
-            Line("تنبيه قبل ${if (p.hasAdhan) "الأذان" else "الشروق"}", "يقول «سبحان الله» قبل الموعد بعدد الدقائق") {
+            Line("تنبيه قبل ${if (p.hasAdhan) "الأذان" else "الشروق"}", "«${Settings.preSound.ar}» قبل الموعد بعدد الدقائق") {
                 Stepper(Settings.preAlert(p), 0..60, format = { minutesLabel(it) }) { Settings.setPreAlert(p, it); changed() }
             }
             if (p.hasAdhan) Line("تنبيه الإقامة", "بعد الأذان بعدد الدقائق") {
