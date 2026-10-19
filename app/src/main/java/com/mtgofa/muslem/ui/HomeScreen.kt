@@ -1,6 +1,5 @@
 package com.mtgofa.muslem.ui
 
-import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.foundation.background
 import androidx.compose.runtime.key
 import androidx.compose.material.icons.rounded.EventNote
@@ -385,7 +384,7 @@ private fun NightChip(label: String, t: ZonedDateTime, modifier: Modifier, alarm
         Text("${clock(t)} ${ampm(t)}", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2F8FC4))
         // the night prayer alarm lives behind this chip
         if (onClick != null) Icon(
-            if (alarm) Icons.Rounded.NotificationsActive else Icons.Rounded.NotificationsNone, "تنبيه قيام الليل",
+            if (alarm) Icons.Rounded.NotificationsActive else Icons.Rounded.NotificationsOff, "تنبيه قيام الليل",
             tint = if (alarm) Palette.Emerald else Palette.Muted, modifier = Modifier.padding(start = 4.dp).size(16.dp),
         )
     }
