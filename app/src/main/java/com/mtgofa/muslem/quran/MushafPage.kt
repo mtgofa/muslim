@@ -1,5 +1,16 @@
 package com.mtgofa.muslem.quran
 
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.RectF
@@ -43,7 +54,12 @@ class PageLayout(
     /** basmala runs: text (logical order, drawn right-to-left), x, baseline */
     val basmalas: List<Triple<String, Float, Float>>,
     val basmalaSize: Float,
+    /** drawn height: the box height, or more when the text is enlarged and reflowed */
+    val height: Float,
 )
+
+/** Text sizes the reader can choose, as a factor of the printed page's size. */
+val MUSHAF_ZOOM = floatArrayOf(1f, 1.25f, 1.5f, 1.8f)
 
 private const val LINES = 15
 /** Surah name and basmala sizes, as a fraction of the line height. */
@@ -59,8 +75,12 @@ private const val BASMALA_WIDTH = 0.62f
 /** The long-form basmala in the title font, whose colour layers carry the tajweed. */
 private const val BASMALA_WORDS = "\uFE9D\uFEA1\uFEA5\uFEA9"
 
-/** Measure and place every glyph of [page] into a [w] x [h] pixel box. */
-fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle): PageLayout {
+/**
+ * Measure and place every glyph of [page] into a [w] x [h] pixel box. With [zoom] above 1 the
+ * words are larger than the printed line allows, so they are reflowed: the page's words, in
+ * order, are broken into new justified lines and the page grows taller (it then scrolls).
+ */
+fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f): PageLayout {
     val pageFont = MushafFonts.page(ctx, data.page, style)
     val headerFont = MushafFonts.header(ctx, style)
     val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = pageFont; textSize = 100f }
@@ -76,6 +96,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
     var size = 100f * w / widest
     size = min(size, lineH * (if (special) 0.95f else 1.3f))
     if (special) size *= 0.86f
+    if (zoom > 1f) return reflow(ctx, data, w, lineH, size * zoom, zoom, special, pageFont, headerFont, natural)
     p.textSize = size
     val fm = p.fontMetrics
     val scale = size / 100f
@@ -140,7 +161,90 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
             }
         }
     }
-    return PageLayout(data.page, size, lh * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas, basmalaSize)
+    return PageLayout(data.page, size, lh * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas, basmalaSize, h)
+}
+
+/** The enlarged page: same words and order, new line breaks; surah bands and basmala as printed. */
+private fun reflow(
+    ctx: Context, data: PageData, w: Float, baseLineH: Float, size: Float, zoom: Float, special: Boolean,
+    pageFont: Typeface, headerFont: Typeface, natural: Map<Int, List<Float>>,
+): PageLayout {
+    val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = pageFont; textSize = size }
+    val fm = p.fontMetrics
+    val scale = size / 100f
+    val lh = baseLineH * zoom
+    val minGap = size * 0.14f
+    // a little room at the sides: the larger strokes reach past their advance at the line ends
+    val inset = size * 0.08f
+    val words = ArrayList<Placed>()
+    val frames = ArrayList<Frame>()
+    val basmalas = ArrayList<Triple<String, Float, Float>>()
+    val hp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = headerFont; textSize = baseLineH * TITLE_SIZE }
+    val bp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = headerFont; textSize = 100f }
+    val basmalaSize = 100f * (w * BASMALA_WIDTH) / bp.getRunAdvance(BASMALA_WORDS, 0, BASMALA_WORDS.length, 0, BASMALA_WORDS.length, true, BASMALA_WORDS.length)
+    bp.textSize = basmalaSize
+
+    val wordCount = HashMap<Pair<Int, Int>, Int>()
+    data.firstAyah?.let { (s, a) -> wordCount[s to a] = QuranDb.wordsBefore(data.page, s, a) }
+    var y = 0f
+    val para = ArrayList<Pair<Glyph, Float>>()
+
+    /** break the words gathered since the last band into full-width lines */
+    fun flush() {
+        var i = 0
+        while (i < para.size) {
+            var j = i; var used = 0f
+            while (j < para.size && (j == i || used + minGap + para[j].second <= w - 2 * inset)) { used += (if (j > i) minGap else 0f) + para[j].second; j++ }
+            val line = para.subList(i, j)
+            val total = line.sumOf { it.second.toDouble() }.toFloat()
+            val last = j == para.size
+            val justify = !special && !last && line.size > 1
+            val gap = if (justify) (w - 2 * inset - total) / (line.size - 1) else minGap
+            val lineW = total + gap * (line.size - 1)
+            var x = if (special) (w + lineW) / 2f else w - inset
+            val baseline = y + lh / 2f - (fm.ascent + fm.descent) / 2f
+            for ((g, gw) in line) {
+                x -= gw
+                val idx = if (g.type == GlyphType.WORD) {
+                    val key = g.sura to g.ayah
+                    val n = wordCount[key] ?: 0
+                    wordCount[key] = n + 1
+                    n
+                } else -1
+                words += Placed(g, x, baseline, RectF(x - gap / 2f, y + lh * 0.04f, x + gw + gap / 2f, y + lh * 0.98f), idx)
+                x -= gap
+            }
+            y += lh
+            i = j
+        }
+        para.clear()
+    }
+
+    for (line in data.lines) {
+        when (line.type) {
+            GlyphType.HEADER -> {
+                flush()
+                val code = line.glyphs.first().code
+                val ink = android.graphics.Rect().also { hp.getTextBounds(code, 0, code.length, it) }
+                val rect = RectF(w * 0.01f, y + baseLineH * 0.06f, w * 0.99f, y + baseLineH * 0.94f)
+                frames += Frame(rect, code, w / 2f - ink.exactCenterX(), rect.centerY() - ink.exactCenterY())
+                y += baseLineH
+            }
+            GlyphType.BASMALA -> {
+                flush()
+                val ink = android.graphics.Rect().also { bp.getTextBounds(BASMALA_WORDS, 0, BASMALA_WORDS.length, it) }
+                val bw = bp.getRunAdvance(BASMALA_WORDS, 0, BASMALA_WORDS.length, 0, BASMALA_WORDS.length, true, BASMALA_WORDS.length)
+                basmalas += Triple(BASMALA_WORDS, (w - bw) / 2f, y + baseLineH / 2f - ink.exactCenterY())
+                y += baseLineH
+            }
+            else -> {
+                val adv100 = natural[line.number] ?: continue
+                line.glyphs.forEachIndexed { i, g -> para += g to adv100[i] * scale }
+            }
+        }
+    }
+    flush()
+    return PageLayout(data.page, size, baseLineH * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas, basmalaSize, y + baseLineH * 0.3f)
 }
 
 /**
@@ -158,15 +262,41 @@ fun MushafPageView(
     /** meanings mode: words that have a meaning are marked, and tapping one reports it */
     wordMode: Boolean = false,
     onWord: (com.mtgofa.muslem.data.WordMeaning, AyahRef) -> Unit = { _, _ -> },
+    /** text size factor, one of [MUSHAF_ZOOM] */
+    zoom: Float = 1f,
+    /** a two-finger pinch: +1 to enlarge one step, -1 to shrink */
+    onPinch: (Int) -> Unit = {},
 ) {
     val ctx = LocalContext.current
     val density = LocalDensity.current
-    BoxWithConstraints(modifier) {
+    BoxWithConstraints(
+        modifier.pointerInput(Unit) {
+            // two fingers change the text size; one finger is left alone for turning pages
+            awaitEachGesture {
+                awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                var factor = 1f
+                do {
+                    val e = awaitPointerEvent(PointerEventPass.Initial)
+                    if (e.changes.count { it.pressed } >= 2) {
+                        factor *= e.calculateZoom()
+                        e.changes.forEach { it.consume() }
+                    }
+                } while (e.changes.any { it.pressed })
+                if (factor > 1.15f) onPinch(1) else if (factor < 0.87f) onPinch(-1)
+            }
+        },
+    ) {
         val w = with(density) { maxWidth.toPx() }
         val h = with(density) { maxHeight.toPx() }
-        var layout by remember(page, style, w, h) { mutableStateOf<PageLayout?>(null) }
-        LaunchedEffect(page, style, w, h) {
-            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), w, h, style) }
+        // sideways the page is a centred column a little wider than the screen is tall: its text
+        // is larger than upright, in its printed lines, and the page scrolls — rather than the
+        // text shrinking to fit the short height, or stretching across the whole width
+        val landscape = w > h
+        val pw = if (landscape) min(w, h * 1.35f) else w
+        val pageH = if (landscape) pw * 1.55f else h
+        var layout by remember(page, style, pw, pageH, zoom) { mutableStateOf<PageLayout?>(null) }
+        LaunchedEffect(page, style, pw, pageH, zoom) {
+            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, zoom) }
         }
         val ink = Color(0xFF1A1A1A)
         val hl = Color(0x2A0F7A62)
@@ -177,9 +307,22 @@ fun MushafPageView(
                 .toMap()
         }
 
+        val scroll = rememberScrollState()
+        val tall = lay.height > h + 1f
+        // keep the recited / selected ayah in view on a page taller than the screen
+        LaunchedEffect(highlight, lay) {
+            if (!tall || highlight == null) return@LaunchedEffect
+            val rows = lay.words.filter { it.g.sura == highlight.sura && it.g.ayah == highlight.ayah }
+            if (rows.isEmpty()) return@LaunchedEffect
+            val top = rows.minOf { it.rect.top }; val bottom = rows.maxOf { it.rect.bottom }
+            if (top < scroll.value || bottom > scroll.value + h) scroll.animateScrollTo((top - h * 0.2f).toInt().coerceAtLeast(0))
+        }
+        Box(Modifier.fillMaxWidth().then(if (tall) Modifier.verticalScroll(scroll) else Modifier)) {
         Canvas(
             Modifier
-                .fillMaxSize()
+                .align(Alignment.TopCenter)
+                .width(with(density) { pw.toDp() })
+                .height(with(density) { (if (tall) lay.height else h).toDp() })
                 .pointerInput(lay, explained) {
                     fun hit(x: Float, y: Float) = lay.words.firstOrNull { it.rect.contains(x, y) }?.g
                         ?.let { AyahRef(it.sura, it.ayah) }
@@ -240,6 +383,7 @@ fun MushafPageView(
                     }
                 }
             }
+        }
         }
     }
 }

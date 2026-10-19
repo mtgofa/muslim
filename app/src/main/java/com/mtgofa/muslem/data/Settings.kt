@@ -146,6 +146,10 @@ object Settings {
     var qiyamSound: com.mtgofa.muslem.prayer.AlertSound
         get() = com.mtgofa.muslem.prayer.AlertSound.of(sp.getString("qiyamSound", null), com.mtgofa.muslem.prayer.AlertSound.TASBEEH)
         set(v) = edit { putString("qiyamSound", v.name) }
+    /** Mushaf text size: an index into MUSHAF_ZOOM */
+    var mushafZoom: Int
+        get() = sp.getInt("mushafZoom", 0).coerceIn(0, com.mtgofa.muslem.quran.MUSHAF_ZOOM.lastIndex)
+        set(v) = edit { putInt("mushafZoom", v.coerceIn(0, com.mtgofa.muslem.quran.MUSHAF_ZOOM.lastIndex)) }
     var adhanInSilent: Boolean
         get() = sp.getBoolean("adhanInSilent", false)
         set(v) = edit { putBoolean("adhanInSilent", v) }
