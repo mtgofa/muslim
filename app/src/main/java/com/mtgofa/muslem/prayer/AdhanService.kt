@@ -31,7 +31,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /** What is sounding right now, for the full-screen adhan page and the settings previews. */
-data class Sounding(val prayer: Prayer?, val type: EventType?, val title: String)
+/** [alarm]: the night-prayer alarm (not a settings preview, though it has no prayer) */
+data class Sounding(val prayer: Prayer?, val type: EventType?, val title: String, val alarm: Boolean = false)
 
 /**
  * Plays the adhan, the "سبحان الله" reminders and the iqama alert as a foreground service on
@@ -86,6 +87,7 @@ class AdhanService : Service() {
             ACTION_STOP -> { finish(); return START_NOT_STICKY }
             ACTION_PLAY -> play(intent)
             ACTION_PREVIEW -> preview(intent)
+            ACTION_QIYAM -> qiyam()
             else -> { finish(); return START_NOT_STICKY }
         }
         return START_NOT_STICKY
@@ -139,6 +141,15 @@ class AdhanService : Service() {
         }
     }
 
+    /** The night prayer alarm: «سبحان الله» on the alarm volume a few times, or vibration only. */
+    private fun qiyam() {
+        _sounding.value = Sounding(null, null, "قيام الليل", alarm = true)
+        startInForeground(buildNote("قيام الليل", "﴿وَبِالْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ﴾", ongoing = true, fullScreen = true))
+        finishedNote = null
+        if (Settings.qiyamVibrate) vibrateAlert(Haptics.QIYAM)
+        else startSound(tasbeehUri(this), repeats = 6, alarm = true, gapMs = 1500)
+    }
+
     private fun preview(intent: Intent) {
         val muezzin = intent.getStringExtra("muezzin")
         val title = if (muezzin != null) Muezzins.byId(muezzin).name else "سبحان الله"
@@ -163,11 +174,11 @@ class AdhanService : Service() {
     }
 
     /** Volume follows the phone: the ringtone volume, or the alarm volume when set to play in silent mode. */
-    private fun startSound(uri: Uri, repeats: Int) {
+    private fun startSound(uri: Uri, repeats: Int, alarm: Boolean = false, gapMs: Long = 350) {
         releasePlayer()
         repeatsLeft = repeats
         val attrs = AudioAttributes.Builder()
-            .setUsage(if (Settings.adhanInSilent) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+            .setUsage(if (alarm || Settings.adhanInSilent) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
             .build()
         val am = getSystemService(AudioManager::class.java)
@@ -179,7 +190,7 @@ class AdhanService : Service() {
                 setDataSource(this@AdhanService, uri)
                 setOnCompletionListener {
                     repeatsLeft--
-                    if (repeatsLeft > 0) main.postDelayed({ runCatching { it.seekTo(0); it.start() } }, 350)
+                    if (repeatsLeft > 0) main.postDelayed({ runCatching { it.seekTo(0); it.start() } }, gapMs)
                     else finish()
                 }
                 setOnErrorListener { _, _, _ -> finish(); true }
@@ -252,6 +263,7 @@ class AdhanService : Service() {
         const val ACTION_PLAY = "com.mtgofa.muslem.PLAY"
         const val ACTION_STOP = "com.mtgofa.muslem.STOP"
         const val ACTION_PREVIEW = "com.mtgofa.muslem.PREVIEW"
+        const val ACTION_QIYAM = "com.mtgofa.muslem.QIYAM"
         private const val NOTE_PLAYING = 10
         private const val NOTE_DONE = 11
 
@@ -265,7 +277,7 @@ class AdhanService : Service() {
         /** Stop a settings preview, leaving a real adhan alone. */
         fun stopPreview(ctx: Context) {
             val s = _sounding.value ?: return
-            if (s.prayer == null) stop(ctx)
+            if (s.prayer == null && !s.alarm) stop(ctx)
         }
 
         fun stop(ctx: Context) {

@@ -1,5 +1,6 @@
 package com.mtgofa.muslem.ui
 
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.foundation.background
 import androidx.compose.runtime.key
 import androidx.compose.material.icons.rounded.EventNote
@@ -119,6 +120,7 @@ fun HomeScreen(
     onWird: () -> Unit,
     onReadWird: (com.mtgofa.muslem.data.Khatma) -> Unit,
     onFasting: () -> Unit,
+    onQiyam: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
@@ -204,7 +206,7 @@ fun HomeScreen(
                 val night = remember(today, changes) { nightMarks(today) }
                 Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     NightChip("منتصف الليل", night.first, Modifier.weight(1f))
-                    NightChip("الثلث الأخير", night.second, Modifier.weight(1f))
+                    NightChip("الثلث الأخير", night.second, Modifier.weight(1f), alarm = Settings.qiyamOn, onClick = onQiyam)
                 }
             }
         }
@@ -369,16 +371,23 @@ private fun PrayerColumn(p: Prayer, t: ZonedDateTime, isNext: Boolean, date: Loc
 }
 
 @Composable
-private fun NightChip(label: String, t: ZonedDateTime, modifier: Modifier) {
+private fun NightChip(label: String, t: ZonedDateTime, modifier: Modifier, alarm: Boolean = false, onClick: (() -> Unit)? = null) {
     Row(
         modifier
+            .clip(CircleShape)
             .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
         Text("$label: ", style = MaterialTheme.typography.labelLarge)
         Text("${clock(t)} ${ampm(t)}", style = MaterialTheme.typography.labelLarge, color = Color(0xFF2F8FC4))
+        // the night prayer alarm lives behind this chip
+        if (onClick != null) Icon(
+            if (alarm) Icons.Rounded.NotificationsActive else Icons.Rounded.NotificationsNone, "تنبيه قيام الليل",
+            tint = if (alarm) Palette.Emerald else Palette.Muted, modifier = Modifier.padding(start = 4.dp).size(16.dp),
+        )
     }
 }
 

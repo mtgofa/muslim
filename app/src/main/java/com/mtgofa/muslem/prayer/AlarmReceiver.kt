@@ -35,6 +35,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Settings.init(ctx)
         Scheduler.schedule(ctx)
+        com.mtgofa.muslem.data.Qiyam.schedule(ctx)
         // wird and fasting reminders keep their data in credential storage: wait for the unlock
         // (BOOT_COMPLETED follows LOCKED_BOOT_COMPLETED once the user unlocks)
         if (!com.mtgofa.muslem.data.Storage.unlocked(ctx)) return

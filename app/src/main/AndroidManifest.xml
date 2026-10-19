@@ -80,6 +80,7 @@
         <receiver android:name=".data.WirdReceiver" android:exported="false" />
         <receiver android:name=".data.FastingReceiver" android:exported="false" />
         <receiver android:name=".data.AdhkarReceiver" android:exported="false" />
+        <receiver android:name=".data.QiyamReceiver" android:exported="false" android:directBootAware="true" />
 
         <receiver android:name=".prayer.BootReceiver" android:exported="true" android:directBootAware="true">
             <intent-filter>

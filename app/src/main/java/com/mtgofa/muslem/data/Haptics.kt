@@ -40,6 +40,8 @@ object Haptics {
     val REMINDER = longArrayOf(0, 140, 140, 140, 700, 140, 140, 140)
     /** the iqama: three quick beats and a long one */
     val IQAMA = longArrayOf(0, 180, 110, 180, 110, 180, 450, 800)
+    /** the night prayer alarm: a slow, swelling knock for about a quarter of a minute */
+    val QIYAM = LongArray(25) { i -> if (i == 0) 0L else if (i % 2 == 1) 500L + (i / 2) * 30L else 700L }
     /** morning / evening adhkar: three soft, even pulses */
     val ADHKAR = longArrayOf(0, 250, 250, 250, 250, 250)
 

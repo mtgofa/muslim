@@ -63,7 +63,7 @@ class AdhanActivity : ComponentActivity() {
                             Icon(painterResource(R.drawable.ic_stat_mosque), null, tint = Color.White, modifier = Modifier.size(64.dp))
                         }
                         Spacer(Modifier.height(28.dp))
-                        Text("حان الآن موعد", color = Color(0xCCFFFFFF), style = MaterialTheme.typography.titleMedium)
+                        Text(if (s?.alarm == true) "حان وقت" else "حان الآن موعد", color = Color(0xCCFFFFFF), style = MaterialTheme.typography.titleMedium)
                         Text(
                             if (p != null) "صلاة ${p.label(LocalDate.now(Settings.zone))}" else (s?.title ?: ""),
                             color = Color.White, style = MaterialTheme.typography.displayLarge, textAlign = TextAlign.Center,
@@ -76,7 +76,7 @@ class AdhanActivity : ComponentActivity() {
                             colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF0A5A48)),
                             shape = RoundedCornerShape(20.dp),
                             modifier = Modifier.fillMaxWidth().height(56.dp),
-                        ) { Text("إيقاف الأذان", style = MaterialTheme.typography.titleMedium) }
+                        ) { Text(if (p != null) "إيقاف الأذان" else "إيقاف التنبيه", style = MaterialTheme.typography.titleMedium) }
                     }
                 }
             }

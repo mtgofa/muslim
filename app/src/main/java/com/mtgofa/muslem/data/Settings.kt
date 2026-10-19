@@ -120,6 +120,22 @@ object Settings {
     var adhkarVibrate: Boolean
         get() = sp.getBoolean("adhkarVibrate", false)
         set(v) = edit { putBoolean("adhkarVibrate", v) }
+    // night prayer alarm: at [qiyamAt] (minutes after midnight), or [qiyamBefore] minutes before Fajr
+    var qiyamOn: Boolean
+        get() = sp.getBoolean("qiyamOn", false)
+        set(v) = edit { putBoolean("qiyamOn", v) }
+    var qiyamBeforeFajr: Boolean
+        get() = sp.getBoolean("qiyamBeforeFajr", true)
+        set(v) = edit { putBoolean("qiyamBeforeFajr", v) }
+    var qiyamAt: Int
+        get() = sp.getInt("qiyamAt", 3 * 60)
+        set(v) = edit { putInt("qiyamAt", v) }
+    var qiyamBefore: Int
+        get() = sp.getInt("qiyamBefore", 60)
+        set(v) = edit { putInt("qiyamBefore", v) }
+    var qiyamVibrate: Boolean
+        get() = sp.getBoolean("qiyamVibrate", false)
+        set(v) = edit { putBoolean("qiyamVibrate", v) }
     var adhanInSilent: Boolean
         get() = sp.getBoolean("adhanInSilent", false)
         set(v) = edit { putBoolean("adhanInSilent", v) }

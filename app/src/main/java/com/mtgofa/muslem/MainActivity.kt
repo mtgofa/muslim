@@ -108,6 +108,7 @@ sealed interface Route {
     data object Settings : Route
     data object Wird : Route
     data object Fasting : Route
+    data object Qiyam : Route
     data class Adhkar(val id: Int) : Route
 }
 
@@ -147,6 +148,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         Scheduler.schedule(this)
+        com.mtgofa.muslem.data.Qiyam.schedule(this)
     }
 }
 
@@ -232,6 +234,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                     onSettings = { push(Route.Settings) },
                     onWird = { push(Route.Wird) },
                     onFasting = { push(Route.Fasting) },
+                    onQiyam = { push(Route.Qiyam) },
                     onReadWird = { push(Route.Mushaf(it.next.coerceAtMost(com.mtgofa.muslem.data.Wird.LAST_PAGE), null, it.id)) },
                 )
                 Route.QuranIndex -> QuranIndexScreen(onBack = ::pop) { page, s, a ->
@@ -247,6 +250,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                     onReliability = { push(Route.Reliability) },
                     onReciters = { push(Route.Reciters) },
                     onAbout = { push(Route.About) },
+                    onQiyam = { push(Route.Qiyam) },
                 )
                 Route.Location -> LocationScreen(::pop)
                 Route.Muezzin -> MuezzinScreen(::pop)
@@ -259,6 +263,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                 Route.Qibla -> QiblaScreen(::pop)
                 Route.Wird -> WirdScreen(::pop) { push(Route.Mushaf(it.next.coerceAtMost(com.mtgofa.muslem.data.Wird.LAST_PAGE), null, it.id)) }
                 Route.Fasting -> FastingScreen(::pop)
+                Route.Qiyam -> com.mtgofa.muslem.ui.QiyamScreen(::pop)
                 is Route.Adhkar -> AdhkarChapterScreen(route.id, ::pop)
             }
         }

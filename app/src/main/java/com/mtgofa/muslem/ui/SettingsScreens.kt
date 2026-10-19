@@ -65,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.rounded.Vibration
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -118,6 +119,7 @@ fun SettingsScreen(
     onReliability: () -> Unit,
     onReciters: () -> Unit,
     onAbout: () -> Unit,
+    onQiyam: () -> Unit,
 ) {
     val ctx = LocalContext.current
     val changes by Settings.changes.collectAsState()
@@ -144,6 +146,8 @@ fun SettingsScreen(
                 SettingRow("صوت المؤذن", Muezzins.byId(Settings.muezzin).name, Icons.Rounded.RecordVoiceOver, onMuezzin) { Chevron() }
                 RowDivider()
                 SettingRow("ضبط كل صلاة", "نوع التنبيه، تعديل الوقت، التنبيه قبل الأذان، والإقامة", Icons.Rounded.Alarm, onPrayers) { Chevron() }
+                RowDivider()
+                SettingRow("تنبيه قيام الليل", com.mtgofa.muslem.data.Qiyam.summary(), Icons.Rounded.Bedtime, onQiyam) { Chevron() }
                 RowDivider()
                 SwitchRow(
                     "شغّل الأذان حتى لو الموبايل صامت",

@@ -17,6 +17,7 @@ class MuslemApp : Application() {
         // before the first unlock after a reboot only the adhan chain can run (see Storage)
         if (!com.mtgofa.muslem.data.Storage.unlocked(this)) {
             Scheduler.schedule(this)
+            com.mtgofa.muslem.data.Qiyam.schedule(this)
             return
         }
         com.mtgofa.muslem.data.Storage.migrate(this)
@@ -28,6 +29,7 @@ class MuslemApp : Application() {
         com.mtgofa.muslem.data.Wird.schedule(this)
         com.mtgofa.muslem.data.Fasting.schedule(this)
         com.mtgofa.muslem.data.AdhkarReminder.schedule(this)
+        com.mtgofa.muslem.data.Qiyam.schedule(this)
     }
 
     private fun createChannels() {
