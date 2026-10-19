@@ -30,3 +30,7 @@ chapters.sort(key=lambda c: c["id"])
 with open(OUT, "w", encoding="utf-8") as f:
     json.dump(chapters, f, ensure_ascii=False, separators=(",", ":"))
 print(len(chapters), "chapters,", sum(len(c["items"]) for c in chapters), "adhkar")
+
+# separate morning and evening chapters, built from chapter 27
+import os, subprocess
+subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "split_morning_evening.py"), OUT], check=True)

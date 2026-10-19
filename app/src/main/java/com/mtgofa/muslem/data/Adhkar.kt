@@ -12,10 +12,15 @@ data class Featured(val id: Int, val name: String)
 
 /** The Hisn al-Muslim collection bundled in assets/adhkar.json (built by tools/build_adhkar.py). */
 object Adhkar {
+    /** separate morning and evening chapters (tools/split_morning_evening.py) */
+    const val MORNING = 201
+    const val EVENING = 202
+
     @Volatile private var chapters: List<AdhkarChapter>? = null
 
     val featured = listOf(
-        Featured(27, "أذكار الصباح والمساء"),
+        Featured(MORNING, "أذكار الصباح"),
+        Featured(EVENING, "أذكار المساء"),
         Featured(25, "أذكار بعد الصلاة"),
         Featured(28, "أذكار النوم"),
         Featured(1, "أذكار الاستيقاظ"),

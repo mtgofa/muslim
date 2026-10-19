@@ -27,6 +27,22 @@ object Haptics {
 
     fun pattern(ctx: Context, vararg timings: Long) = play(ctx, VibrationEffect.createWaveform(timings, -1))
 
+    fun cancel(ctx: Context) { vibrator(ctx)?.cancel() }
+
+    // Patterns for alerts without sound, each recognisable by feel. Timings alternate off/on (ms).
+    /** the adhan: "الله أكبر، الله أكبر" — two pairs of firm beats, three times (about 11 s) */
+    val ADHAN = longArrayOf(
+        0, 380, 160, 380, 650, 380, 160, 380, 1300,
+        380, 160, 380, 650, 380, 160, 380, 1300,
+        380, 160, 380, 650, 380, 160, 380,
+    )
+    /** before the adhan and «سبحان الله» reminders: two light taps, twice */
+    val REMINDER = longArrayOf(0, 140, 140, 140, 700, 140, 140, 140)
+    /** the iqama: three quick beats and a long one */
+    val IQAMA = longArrayOf(0, 180, 110, 180, 110, 180, 450, 800)
+    /** morning / evening adhkar: three soft, even pulses */
+    val ADHKAR = longArrayOf(0, 250, 250, 250, 250, 250)
+
     private fun play(ctx: Context, effect: VibrationEffect) {
         val v = vibrator(ctx)?.takeIf { it.hasVibrator() } ?: return
         if (Build.VERSION.SDK_INT >= 33) {

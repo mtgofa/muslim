@@ -1,5 +1,6 @@
 package com.mtgofa.muslem.ui
 
+import com.mtgofa.muslem.data.Adhkar
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,7 +26,8 @@ class AdhkarTheme(val bg: Color, val blob: Color, val draw: DrawScope.() -> Unit
 private val CLOUD = Color(0xFFFFFFFF)
 
 fun adhkarTheme(id: Int): AdhkarTheme = when (id) {
-    27 -> AdhkarTheme(Color(0xFFFFF4D6), Color(0xFFFCE3A6)) { sun(); cloud(0.12f, 0.3f, 1f); cloud(0.55f, 0.72f, 0.8f) }
+    27, Adhkar.MORNING -> AdhkarTheme(Color(0xFFFFF4D6), Color(0xFFFCE3A6)) { sun(); cloud(0.12f, 0.3f, 1f); cloud(0.55f, 0.72f, 0.8f) }
+    Adhkar.EVENING -> AdhkarTheme(Color(0xFFE8E4FA), Color(0xFFCFC6F2)) { night(Color(0xFF3B2F7A)); cloud(0.5f, 0.72f, 0.8f) }
     25 -> AdhkarTheme(Color(0xFFE3ECFF), Color(0xFFC9D8FB)) { mosqueArch(); prayerMat() }
     28 -> AdhkarTheme(Color(0xFFD9F6FA), Color(0xFFB4E9F1)) { night(Color(0xFF1E3A6B)); pillow() }
     1 -> AdhkarTheme(Color(0xFFFFE3E0), Color(0xFFF9C9C3)) { sunrise() }

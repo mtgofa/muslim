@@ -41,5 +41,6 @@ class BootReceiver : BroadcastReceiver() {
         com.mtgofa.muslem.data.Storage.migrate(ctx)
         com.mtgofa.muslem.data.Wird.schedule(ctx)
         com.mtgofa.muslem.data.Fasting.schedule(ctx)
+        com.mtgofa.muslem.data.AdhkarReminder.schedule(ctx)
     }
 }

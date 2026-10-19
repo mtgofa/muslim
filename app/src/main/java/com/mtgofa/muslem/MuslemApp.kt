@@ -26,6 +26,7 @@ class MuslemApp : Application() {
         Scheduler.schedule(this)
         com.mtgofa.muslem.data.Wird.schedule(this)
         com.mtgofa.muslem.data.Fasting.schedule(this)
+        com.mtgofa.muslem.data.AdhkarReminder.schedule(this)
     }
 
     private fun createChannels() {
@@ -36,6 +37,18 @@ class MuslemApp : Application() {
                 setSound(null, null) // the service plays the audio itself on the alarm stream
                 enableVibration(true)
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_ADHKAR, "تذكير الأذكار", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "تذكير أذكار الصباح والمساء بصوت الإشعار"
+            },
+        )
+        nm.createNotificationChannel(
+            NotificationChannel(CH_ADHKAR_QUIET, "تذكير الأذكار بالاهتزاز", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "تذكير أذكار الصباح والمساء بالاهتزاز فقط"
+                setSound(null, null)
+                enableVibration(false) // the app vibrates in its own pattern
             },
         )
         nm.createNotificationChannel(
@@ -56,5 +69,7 @@ class MuslemApp : Application() {
         const val CH_ADHAN = "adhan"
         const val CH_STATUS = "status"
         const val CH_WIRD = "wird"
+        const val CH_ADHKAR = "adhkar"
+        const val CH_ADHKAR_QUIET = "adhkar_quiet"
     }
 }

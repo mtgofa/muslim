@@ -100,6 +100,26 @@ object Settings {
     fun muezzinFor(p: Prayer) = if (p == Prayer.FAJR && fajrMuezzin.isNotEmpty()) fajrMuezzin else muezzin
 
     /** play the adhan and reminders even when the phone is silent (on the alarm volume) */
+    /** the adhan and all prayer alerts vibrate in their own patterns instead of sounding */
+    var vibrateOnly: Boolean
+        get() = sp.getBoolean("vibrateOnly", false)
+        set(v) = edit { putBoolean("vibrateOnly", v) }
+    // morning / evening adhkar reminders: minutes after midnight, and vibration instead of a sound
+    var adhkarMorningOn: Boolean
+        get() = sp.getBoolean("adhkarMorningOn", true)
+        set(v) = edit { putBoolean("adhkarMorningOn", v) }
+    var adhkarMorningAt: Int
+        get() = sp.getInt("adhkarMorningAt", 6 * 60 + 30)
+        set(v) = edit { putInt("adhkarMorningAt", v) }
+    var adhkarEveningOn: Boolean
+        get() = sp.getBoolean("adhkarEveningOn", true)
+        set(v) = edit { putBoolean("adhkarEveningOn", v) }
+    var adhkarEveningAt: Int
+        get() = sp.getInt("adhkarEveningAt", 16 * 60 + 30)
+        set(v) = edit { putInt("adhkarEveningAt", v) }
+    var adhkarVibrate: Boolean
+        get() = sp.getBoolean("adhkarVibrate", false)
+        set(v) = edit { putBoolean("adhkarVibrate", v) }
     var adhanInSilent: Boolean
         get() = sp.getBoolean("adhanInSilent", false)
         set(v) = edit { putBoolean("adhanInSilent", v) }

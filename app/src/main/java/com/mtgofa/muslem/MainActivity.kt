@@ -117,6 +117,8 @@ class MainActivity : ComponentActivity() {
     private val openPage = MutableStateFlow(0)
     /** the khatma the reminder was for, 0 = none */
     private val openWird = MutableStateFlow(0L)
+    /** adhkar chapter to open (from the morning / evening reminder), 0 = none */
+    private val openAdhkar = MutableStateFlow(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge(
@@ -128,11 +130,13 @@ class MainActivity : ComponentActivity() {
         openMushaf.value = intent?.getBooleanExtra("openMushaf", false) == true
         openPage.value = intent?.getIntExtra("page", 0) ?: 0
         openWird.value = intent?.getLongExtra("wird", 0L) ?: 0L
-        setContent { MuslemTheme { App(openMushaf, openPage, openWird) } }
+        openAdhkar.value = intent?.getIntExtra("openAdhkar", 0) ?: 0
+        setContent { MuslemTheme { App(openMushaf, openPage, openWird, openAdhkar) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        intent.getIntExtra("openAdhkar", 0).takeIf { it != 0 }?.let { openAdhkar.value = it }
         if (intent.getBooleanExtra("openMushaf", false)) {
             openPage.value = intent.getIntExtra("page", 0)
             openWird.value = intent.getLongExtra("wird", 0L)
@@ -147,7 +151,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlow<Int>, openWird: MutableStateFlow<Long>) {
+private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlow<Int>, openWird: MutableStateFlow<Long>, openAdhkar: MutableStateFlow<Int>) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     var dbReady by remember { mutableStateOf(false) }
@@ -183,6 +187,16 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
             openPage.value = 0; openWird.value = 0
             if (stack.lastOrNull() is Route.Mushaf) stack.removeAt(stack.lastIndex)
             push(Route.Mushaf(page, null, wird))
+        }
+    }
+
+    val wantAdhkar by openAdhkar.collectAsState()
+    LaunchedEffect(wantAdhkar, dbReady) {
+        if (wantAdhkar != 0 && dbReady) {
+            val id = wantAdhkar
+            openAdhkar.value = 0
+            if (stack.lastOrNull() is Route.Adhkar) stack.removeAt(stack.lastIndex)
+            push(Route.Adhkar(id))
         }
     }
 

@@ -22,6 +22,7 @@ import com.mtgofa.muslem.MainActivity
 import com.mtgofa.muslem.MuslemApp
 import com.mtgofa.muslem.R
 import com.mtgofa.muslem.data.AlertMode
+import com.mtgofa.muslem.data.Haptics
 import com.mtgofa.muslem.data.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -115,11 +116,19 @@ class AdhanService : Service() {
         val inCall = am.mode == AudioManager.MODE_IN_CALL || am.mode == AudioManager.MODE_IN_COMMUNICATION
         if (inCall && Settings.muteInCall) { finish(); return }
 
-        // on the ringtone volume, a silent or vibrating phone stays quiet unless the user chose
-        // to hear the adhan anyway (then it plays on the alarm volume)
-        if (!Settings.adhanInSilent && am.ringerMode != AudioManager.RINGER_MODE_NORMAL) {
-            if (am.ringerMode == AudioManager.RINGER_MODE_VIBRATE) vibrate()
-            finish(); return
+        // on the ringtone volume, a silent phone stays quiet and a phone on vibrate vibrates,
+        // unless the user chose to hear the adhan anyway (then it plays on the alarm volume)
+        val ringer = am.ringerMode
+        if (!Settings.adhanInSilent && ringer == AudioManager.RINGER_MODE_SILENT) { finish(); return }
+        if (Settings.vibrateOnly || (!Settings.adhanInSilent && ringer == AudioManager.RINGER_MODE_VIBRATE)) {
+            vibrateAlert(
+                when {
+                    type == EventType.IQAMA -> Haptics.IQAMA
+                    fullAdhan -> Haptics.ADHAN
+                    else -> Haptics.REMINDER
+                },
+            )
+            return
         }
 
         when {
@@ -142,9 +151,15 @@ class AdhanService : Service() {
 
     private fun rawUri(res: Int): Uri = Uri.parse("android.resource://$packageName/$res")
 
-    private fun vibrate() {
-        val v = getSystemService(android.os.Vibrator::class.java) ?: return
-        v.vibrate(android.os.VibrationEffect.createWaveform(longArrayOf(0, 400, 250, 400, 250, 400), -1))
+    private var vibrating = false
+
+    /** A silent alert in its own vibration pattern; the stop button and volume keys end it early. */
+    private fun vibrateAlert(pattern: LongArray) {
+        releasePlayer()
+        vibrating = true
+        Haptics.pattern(this, *pattern)
+        grabVolumeKeys()
+        main.postDelayed({ finish() }, pattern.sum() + 300)
     }
 
     /** Volume follows the phone: the ringtone volume, or the alarm volume when set to play in silent mode. */
@@ -178,6 +193,7 @@ class AdhanService : Service() {
     }
 
     private fun releasePlayer() {
+        if (vibrating) { Haptics.cancel(this); vibrating = false }
         releaseVolumeKeys()
         main.removeCallbacksAndMessages(null)
         player?.runCatching { stop(); release() }

@@ -63,6 +63,8 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.draw.alpha
+import androidx.compose.material.icons.rounded.Vibration
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -264,7 +266,9 @@ fun MuezzinScreen(onBack: () -> Unit) {
     key(changes, rev) {
         Column(Modifier.fillMaxSize()) {
             TopBar("صوت المؤذن", onBack)
-            Box(Modifier.padding(horizontal = 16.dp)) {
+            VibrateOnlyCard()
+            Spacer(Modifier.height(10.dp))
+            Box(Modifier.padding(horizontal = 16.dp).alpha(if (Settings.vibrateOnly) 0.45f else 1f)) {
                 Segmented(listOf(false, true), fajrMode, { if (it) "أذان الفجر" else "باقي الصلوات" }) { fajrMode = it }
             }
             if (fajrMode) Text(
@@ -272,7 +276,7 @@ fun MuezzinScreen(onBack: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall, color = Palette.Muted, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)) }
-            LazyColumn(contentPadding = PaddingValues(16.dp)) {
+            LazyColumn(Modifier.alpha(if (Settings.vibrateOnly) 0.45f else 1f), contentPadding = PaddingValues(16.dp)) {
                 if (fajrMode) item {
                     MuezzinRow("مثل باقي الصلوات (بدون «الصلاة خير من النوم»)", Settings.fajrMuezzin.isEmpty(), true, null, false, null, {}, { Settings.fajrMuezzin = "" }, null)
                 }
@@ -300,6 +304,25 @@ fun MuezzinScreen(onBack: () -> Unit) {
                     )
                 }
             }
+        }
+    }
+}
+
+/** Vibration instead of any sound, with a button to feel the adhan's pattern. */
+@Composable
+private fun VibrateOnlyCard() {
+    val ctx = LocalContext.current
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { com.mtgofa.muslem.data.Haptics.cancel(ctx) } }
+    Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
+        SwitchRow(
+            "اهتزاز فقط بدون صوت",
+            if (Settings.vibrateOnly) "الأذان والتنبيهات تهتز بنمط خاص بكل منها" else "يحل الاهتزاز محل صوت الأذان والتنبيهات",
+            Icons.Rounded.Vibration, Settings.vibrateOnly,
+        ) { Settings.vibrateOnly = it }
+        if (Settings.vibrateOnly) Row(Modifier.padding(start = 48.dp, bottom = 6.dp)) {
+            TextButton(onClick = { com.mtgofa.muslem.data.Haptics.pattern(ctx, *com.mtgofa.muslem.data.Haptics.ADHAN) }) { Text("جرّب اهتزاز الأذان") }
+            TextButton(onClick = { com.mtgofa.muslem.data.Haptics.pattern(ctx, *com.mtgofa.muslem.data.Haptics.IQAMA) }) { Text("الإقامة") }
+            TextButton(onClick = { com.mtgofa.muslem.data.Haptics.pattern(ctx, *com.mtgofa.muslem.data.Haptics.REMINDER) }) { Text("التنبيه") }
         }
     }
 }
