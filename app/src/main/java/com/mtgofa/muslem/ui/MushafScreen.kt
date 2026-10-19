@@ -2,7 +2,6 @@
 
 package com.mtgofa.muslem.ui
 
-import androidx.compose.material.icons.rounded.TextIncrease
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -305,10 +304,6 @@ private fun MushafReader(startPage: Int, focus: AyahRef?, wird: Long, onBack: ()
                     ),
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Rounded.Lightbulb, "معاني الكلمات", tint = if (wordMode) Palette.Gold else barInk, modifier = Modifier.size(29.dp)) }
-                // text size: each tap one step larger, then back to the printed size
-                BarIcon(Icons.Rounded.TextIncrease, "حجم الخط", if (Settings.mushafZoom > 0) Palette.Gold else barInk) {
-                    Settings.mushafZoom = (Settings.mushafZoom + 1) % com.mtgofa.muslem.quran.MUSHAF_ZOOM.size
-                }
                 BarIcon(Icons.Rounded.Search, "الفهرس والبحث", barInk) { sheet = "index" }
                 BarIcon(if (marked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder, "علامة", if (marked) Palette.Gold else barInk) {
                     Settings.toggleBookmark(page)

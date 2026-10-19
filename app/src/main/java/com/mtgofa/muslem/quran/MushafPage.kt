@@ -288,15 +288,16 @@ fun MushafPageView(
     ) {
         val w = with(density) { maxWidth.toPx() }
         val h = with(density) { maxHeight.toPx() }
-        // sideways the page is a centred column a little wider than the screen is tall: its text
-        // is larger than upright, in its printed lines, and the page scrolls — rather than the
-        // text shrinking to fit the short height, or stretching across the whole width
+        // sideways the page spans the full width in its printed lines and scrolls, rather than
+        // its text shrinking to fit the short height. The text is already large there, so the
+        // pinch size applies upright only.
         val landscape = w > h
-        val pw = if (landscape) min(w, h * 1.35f) else w
+        val pw = w
         val pageH = if (landscape) pw * 1.55f else h
-        var layout by remember(page, style, pw, pageH, zoom) { mutableStateOf<PageLayout?>(null) }
-        LaunchedEffect(page, style, pw, pageH, zoom) {
-            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, zoom) }
+        val z = if (landscape) 1f else zoom
+        var layout by remember(page, style, pw, pageH, z) { mutableStateOf<PageLayout?>(null) }
+        LaunchedEffect(page, style, pw, pageH, z) {
+            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, z) }
         }
         val ink = Color(0xFF1A1A1A)
         val hl = Color(0x2A0F7A62)
