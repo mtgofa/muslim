@@ -385,7 +385,7 @@ private fun NightChip(label: String, t: ZonedDateTime, modifier: Modifier, alarm
         // the night prayer alarm lives behind this chip
         if (onClick != null) Icon(
             if (alarm) Icons.Rounded.NotificationsActive else Icons.Rounded.NotificationsOff, "تنبيه قيام الليل",
-            tint = if (alarm) Palette.Emerald else Palette.Muted, modifier = Modifier.padding(start = 4.dp).size(16.dp),
+            tint = if (alarm) Palette.Emerald else Palette.Muted.copy(alpha = 0.45f), modifier = Modifier.padding(start = 4.dp).size(16.dp),
         )
     }
 }
