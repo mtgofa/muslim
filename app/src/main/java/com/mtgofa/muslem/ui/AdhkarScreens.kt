@@ -263,14 +263,11 @@ fun AdhkarChapterScreen(id: Int, onBack: () -> Unit) {
                         }
                         .padding(16.dp),
                 ) {
-                    Text(
-                        d.text, fontFamily = Plex, fontSize = 19.sp, lineHeight = 36.sp,
-                        color = if (finished) Palette.Muted else Palette.Ink,
-                    )
+                    DhikrBody(d.text, finished)
                     Spacer(Modifier.height(12.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            if (d.repeat > 1) "التكرار: ${arabicDigits(d.repeat)} مرات" else "مرة واحدة",
+                            when { d.repeat == 1 -> "مرة واحدة"; d.repeat == 2 -> "مرتان"; d.repeat <= 10 -> "${arabicDigits(d.repeat)} مرات"; else -> "${arabicDigits(d.repeat)} مرة" },
                             style = MaterialTheme.typography.labelMedium, color = Palette.Muted, modifier = Modifier.weight(1f),
                         )
                         Box(

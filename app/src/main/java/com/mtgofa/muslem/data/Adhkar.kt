@@ -62,8 +62,8 @@ object Adhkar {
         }
     }
 
-    /** The source wraps sayings in (( )); the reader shows plain text. */
-    private fun clean(t: String) = t.replace("((", "").replace("))", "").replace(Regex("\\s+"), " ").trim()
+    // the ((…)) quotes stay: DhikrBody uses them to tell the dhikr from the instructions around it
+    private fun clean(t: String) = t.replace(Regex("\u0640{2,}"), "").replace(Regex("\\s+"), " ").trim()
 }
 
 /** A phrase for the tasbeeh counter, with the count of one round. */
