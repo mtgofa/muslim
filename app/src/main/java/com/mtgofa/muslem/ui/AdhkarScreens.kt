@@ -26,7 +26,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
-import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.NotificationsOff
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.DirectionsCar
@@ -100,10 +102,7 @@ fun AdhkarHomeScreen(onBack: () -> Unit, onHisn: () -> Unit, onChapter: (Int) ->
         item { SectionTitle("الأذكار اليومية") }
         // the five main categories as large illustrated cards, the rest as smaller ones in pairs
         val (big, small) = Adhkar.featured.partition { it.id in BIG_CARDS }
-        // morning and evening first, with their reminders right under them
-        val (daily, rest) = big.partition { it.id == Adhkar.MORNING || it.id == Adhkar.EVENING }
-        items(daily + listOf(null) + rest, key = { it?.let { f -> "big${f.id}" } ?: "reminders" }) { f ->
-            if (f == null) { AdhkarReminderCard(); return@items }
+        items(big, key = { "big${it.id}" }) { f ->
             val n = chapters.firstOrNull { it.id == f.id }?.items?.size ?: 0
             BigAdhkarCard(f.name, n, adhkarTheme(f.id)) { onChapter(f.id) }
         }
@@ -232,6 +231,7 @@ fun AdhkarChapterScreen(id: Int, onBack: () -> Unit) {
 
     Column(Modifier.fillMaxSize()) {
         TopBar(title, onBack) {
+            if (id == Adhkar.MORNING || id == Adhkar.EVENING) ReminderBell(id)
             IconButton(onClick = { chapter.items.forEachIndexed { i, d -> left[i] = d.repeat } }) {
                 Icon(Icons.Rounded.RestartAlt, "إعادة")
             }
@@ -290,56 +290,74 @@ fun AdhkarChapterScreen(id: Int, onBack: () -> Unit) {
     }
 }
 
-/** Morning and evening reminder times, and whether they sound or only vibrate. */
+/** The bell in the morning / evening chapter's bar: lit when its daily reminder is on. */
+@Composable
+private fun ReminderBell(which: Int) {
+    val changes by Settings.changes.collectAsState()
+    var open by remember { mutableStateOf(false) }
+    val on = remember(changes) { if (which == Adhkar.MORNING) Settings.adhkarMorningOn else Settings.adhkarEveningOn }
+    IconButton(onClick = { open = true }) {
+        Icon(
+            if (on) Icons.Rounded.NotificationsActive else Icons.Rounded.NotificationsOff, "التذكير",
+            tint = if (on) Palette.Emerald else Palette.Muted,
+        )
+    }
+    if (open) AdhkarReminderSheet(which) { open = false }
+}
+
+/** This chapter's daily reminder: on/off, its time, and a sound or vibration only. */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun AdhkarReminderCard() {
+private fun AdhkarReminderSheet(which: Int, onDismiss: () -> Unit) {
     val ctx = LocalContext.current
-    val changes by com.mtgofa.muslem.data.Settings.changes.collectAsState()
-    var picking by remember { mutableStateOf<Int?>(null) }
+    val changes by Settings.changes.collectAsState()
+    var picking by remember { mutableStateOf(false) }
     val notifPerm = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    val morning = which == Adhkar.MORNING
     fun changed(turnedOn: Boolean = false) {
         com.mtgofa.muslem.data.AdhkarReminder.schedule(ctx)
         if (turnedOn && android.os.Build.VERSION.SDK_INT >= 33) notifPerm.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
-    val s = com.mtgofa.muslem.data.Settings
-    androidx.compose.runtime.key(changes) {
-        Card(Modifier.padding(horizontal = 16.dp, vertical = 5.dp), padding = PaddingValues(vertical = 4.dp)) {
-            SwitchRow("تذكير أذكار الصباح", if (s.adhkarMorningOn) "كل يوم — اضغط على الوقت لتغييره" else "بدون تذكير", Icons.Rounded.WbSunny, s.adhkarMorningOn) {
-                s.adhkarMorningOn = it; changed(it)
-            }
-            if (s.adhkarMorningOn) TimeChip(s.adhkarMorningAt) { picking = Adhkar.MORNING }
-            RowDivider()
-            SwitchRow("تذكير أذكار المساء", if (s.adhkarEveningOn) "كل يوم" else "بدون تذكير", Icons.Rounded.DarkMode, s.adhkarEveningOn) {
-                s.adhkarEveningOn = it; changed(it)
-            }
-            if (s.adhkarEveningOn) TimeChip(s.adhkarEveningAt) { picking = Adhkar.EVENING }
-            if (s.adhkarMorningOn || s.adhkarEveningOn) {
-                RowDivider()
-                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    Text("طريقة التذكير", style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
-                    Spacer(Modifier.height(6.dp))
-                    Segmented(listOf(false, true), s.adhkarVibrate, { if (it) "اهتزاز فقط" else "إشعار بصوت" }) { s.adhkarVibrate = it }
-                    androidx.compose.material3.TextButton(onClick = { com.mtgofa.muslem.data.AdhkarReminder.show(ctx, Adhkar.MORNING) }) { Text("جرّب التذكير") }
+    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
+        androidx.compose.runtime.key(changes) {
+            val on = if (morning) Settings.adhkarMorningOn else Settings.adhkarEveningOn
+            val at = if (morning) Settings.adhkarMorningAt else Settings.adhkarEveningAt
+            Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
+                Text(
+                    if (morning) "تذكير أذكار الصباح" else "تذكير أذكار المساء",
+                    style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp),
+                )
+                Spacer(Modifier.height(8.dp))
+                SwitchRow("تذكير كل يوم", if (on) "اضغط على الوقت لتغييره" else "بدون تذكير", Icons.Rounded.NotificationsActive, on) {
+                    if (morning) Settings.adhkarMorningOn = it else Settings.adhkarEveningOn = it
+                    changed(it)
+                }
+                if (on) {
+                    TimeChip(at) { picking = true }
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        Text("طريقة التذكير", style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+                        Spacer(Modifier.height(6.dp))
+                        Segmented(listOf(false, true), Settings.adhkarVibrate, { if (it) "اهتزاز فقط" else "إشعار بصوت" }) { Settings.adhkarVibrate = it }
+                        androidx.compose.material3.TextButton(onClick = { com.mtgofa.muslem.data.AdhkarReminder.show(ctx, which) }) { Text("جرّب التذكير") }
+                    }
                 }
             }
+            if (picking) {
+                val state = androidx.compose.material3.rememberTimePickerState(at / 60, at % 60, is24Hour = false)
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { picking = false },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = {
+                            val v = state.hour * 60 + state.minute
+                            if (morning) Settings.adhkarMorningAt = v else Settings.adhkarEveningAt = v
+                            picking = false; changed()
+                        }) { Text("تم") }
+                    },
+                    dismissButton = { androidx.compose.material3.TextButton(onClick = { picking = false }) { Text("إلغاء") } },
+                    text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { androidx.compose.material3.TimePicker(state) } },
+                )
+            }
         }
-    }
-    picking?.let { which ->
-        val cur = if (which == Adhkar.MORNING) s.adhkarMorningAt else s.adhkarEveningAt
-        val state = androidx.compose.material3.rememberTimePickerState(cur / 60, cur % 60, is24Hour = false)
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { picking = null },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = {
-                    val v = state.hour * 60 + state.minute
-                    if (which == Adhkar.MORNING) s.adhkarMorningAt = v else s.adhkarEveningAt = v
-                    picking = null; changed()
-                }) { Text("تم") }
-            },
-            dismissButton = { androidx.compose.material3.TextButton(onClick = { picking = null }) { Text("إلغاء") } },
-            text = { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { androidx.compose.material3.TimePicker(state) } },
-        )
     }
 }
 

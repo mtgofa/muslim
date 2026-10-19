@@ -20,6 +20,7 @@ class MuslemApp : Application() {
             return
         }
         com.mtgofa.muslem.data.Storage.migrate(this)
+        com.mtgofa.muslem.data.Content.dropStaleDownloads()
         com.mtgofa.muslem.data.Wird.init(this)
         com.mtgofa.muslem.data.Fasting.init(this)
         thread(name = "quran-db") { QuranDb.init(this) }

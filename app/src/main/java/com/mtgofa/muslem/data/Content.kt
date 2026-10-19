@@ -34,6 +34,18 @@ object Content {
 
     fun init(ctx: Context) { app = ctx.applicationContext }
 
+    /**
+     * After an app update the bundled files may be newer than what was downloaded for the old
+     * version (a new chapter, say), so the downloaded copies are dropped and fetched again only
+     * if GitHub has something newer still. Needs the unlocked user (credential storage).
+     */
+    fun dropStaleDownloads() {
+        val p = prefs()
+        if (p.getInt("bundle", 0) == BuildConfig.VERSION_CODE) return
+        dir().deleteRecursively()
+        p.edit().clear().putInt("bundle", BuildConfig.VERSION_CODE).apply()
+    }
+
     /** Drop a parsed cache when content changes. */
     fun onChange(block: () -> Unit) { synchronized(listeners) { listeners += block } }
 
