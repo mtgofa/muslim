@@ -6,10 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
-import android.text.Layout
-import android.text.StaticLayout
-import android.text.TextPaint
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.mtgofa.muslem.R
@@ -22,9 +18,10 @@ import java.io.File
 object AyahImage {
     private const val W = 1080
     private const val PAPER = 0xFFFFF8EB.toInt()
+    private const val CREAM = 0xFFFBF5E6.toInt()
+    private const val GOLD = 0xFFB8893A.toInt()
     private const val EMERALD = 0xFF0F7A62.toInt()
     private const val INK = 0xFF1A1A1A.toInt()
-    private const val MUTED = 0xFF6B6B6B.toInt()
 
     /** Draws the card and returns a shareable image intent, or null if it could not be made. */
     fun shareIntent(ctx: Context, sura: Int, ayah: Int, text: String, label: String): Intent? = runCatching {
@@ -54,40 +51,34 @@ object AyahImage {
         val lineH = probe.textSize * 1.3f
         val lay = layoutPage(ctx, card, inner.toFloat(), lineH * 15, mstyle)
 
-        val logo = 150
-        val contentTop = 130
+        // like a printed card: the Mushaf's banner and ayah on a cream ground, then a small logo
+        // and the credit underneath in a soft gold
+        val contentTop = 70
         val contentH = (card.lines.size * lineH).toInt()
-        val cardTop = 80
-        val cardBottom = contentTop + contentH + 70
-        val refFont = ctx.resources.getFont(R.font.plexar_bold)
-        val ref = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = refFont; textSize = 40f; color = EMERALD }
-        val refLayout = StaticLayout.Builder.obtain(label, 0, label.length, ref, inner)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER).build()
-        val refTop = cardBottom + 40
-        val footTop = refTop + refLayout.height + 40
-        val H = footTop + logo + 150
+        val chip = 130
+        val footTop = contentTop + contentH + 40
+        val H = footTop + chip + 150
 
-        val bmp = Bitmap.createBitmap(W, H.toInt(), Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        c.drawColor(Color.WHITE)
-
-        // the card: the Mushaf's paper, with a thin emerald frame
-        val card2 = RectF(40f, cardTop.toFloat(), (W - 40).toFloat(), cardBottom.toFloat())
-        c.drawRoundRect(card2, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PAPER })
-        c.drawRoundRect(card2, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = EMERALD; style = Paint.Style.STROKE; strokeWidth = 4f })
+        c.drawColor(CREAM)
 
         c.save(); c.translate(pad.toFloat(), contentTop.toFloat()); drawMushaf(c, lay, INK); c.restore()
-        c.save(); c.translate(pad.toFloat(), refTop.toFloat()); refLayout.draw(c); c.restore()
 
-        // footer: the logo, and the app's name under it
-        val logoDrawable = ContextCompat.getDrawable(ctx, R.mipmap.ic_launcher)
-        val lx = (W - logo) / 2
-        logoDrawable?.let {
-            it.setBounds(lx, footTop, lx + logo, footTop + logo)
+        // the logo on a soft round chip, then the credit
+        val cx = W / 2f
+        val chipCy = footTop + chip / 2f
+        c.drawCircle(cx, chipCy, chip / 2f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFF1E7CC.toInt() })
+        ContextCompat.getDrawable(ctx, R.mipmap.ic_launcher)?.let {
+            val side = (chip * 0.82f).toInt()
+            val l = (cx - side / 2f).toInt(); val t = (chipCy - side / 2f).toInt()
+            it.setBounds(l, t, l + side, t + side)
             it.draw(c)
         }
-        val credit = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = refFont; textSize = 44f; color = EMERALD; textAlign = Paint.Align.CENTER }
-        c.drawText("بواسطة تطبيق مسلم", (W / 2).toFloat(), (footTop + logo + 80).toFloat(), credit)
+        val credit = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = ctx.resources.getFont(R.font.plexar_semibold); textSize = 40f; color = GOLD; textAlign = Paint.Align.CENTER
+        }
+        c.drawText("بواسطة تطبيق مسلم", cx, (footTop + chip + 70).toFloat(), credit)
         return bmp
     }
 }
