@@ -63,6 +63,7 @@ import androidx.compose.material.icons.rounded.RepeatOne
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -456,6 +457,28 @@ private fun AyahSheet(a: AyahRef, onDismiss: () -> Unit, onRepeat: () -> Unit) {
     val text = remember(a) { QuranDb.ayahText(a.sura, a.ayah) }
     val marked = remember(changes) { (a.sura to a.ayah) in Settings.ayahMarks() }
     val label = "سورة ${s.name} · آية ${arabicDigits(a.ayah)}"
+    var askShare by remember { mutableStateOf(false) }
+    if (askShare) AlertDialog(
+        onDismissRequest = { askShare = false },
+        title = { Text("مشاركة الآية") },
+        text = { Text("كنص، أو كصورة فيها شعار التطبيق واسمه") },
+        confirmButton = {
+            TextButton(onClick = {
+                askShare = false
+                com.mtgofa.muslem.quran.AyahImage.shareIntent(ctx, "﴿$text﴾", label)?.let {
+                    ctx.startActivity(Intent.createChooser(it, "مشاركة الآية"))
+                    onDismiss()
+                } ?: Toast.makeText(ctx, "تعذّر إنشاء الصورة", Toast.LENGTH_SHORT).show()
+            }) { Text("صورة") }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                askShare = false
+                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "﴿$text﴾\n[$label]"), "مشاركة الآية"))
+                onDismiss()
+            }) { Text("نص") }
+        },
+    )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
         Column(
             Modifier.navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 16.dp)
@@ -499,10 +522,7 @@ private fun AyahSheet(a: AyahRef, onDismiss: () -> Unit, onRepeat: () -> Unit) {
                     ctx.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("آية", "$text\n[$label]"))
                     Toast.makeText(ctx, "تم نسخ الآية", Toast.LENGTH_SHORT).show(); onDismiss()
                 }
-                Action(Icons.Rounded.Share, "مشاركة", Modifier.weight(1f)) {
-                    ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, "﴿$text﴾\n[$label]"), "مشاركة الآية"))
-                    onDismiss()
-                }
+                Action(Icons.Rounded.Share, "مشاركة", Modifier.weight(1f)) { askShare = true }
             }
         }
     }
@@ -714,7 +734,20 @@ private fun ReciterSheet(currentSura: Int, onDismiss: () -> Unit) {
     val changes by Settings.changes.collectAsState()
     var progress by remember { mutableStateOf<Float?>(null) }
     var rev by remember { mutableStateOf(0) }
-    val listState = rememberLazyListState(Reciters.all.indexOfFirst { it.id == Settings.reciter }.coerceAtLeast(0))
+    // grouped by style, in this order; any other style in the list follows
+    val groups = remember {
+        val order = listOf("مرتّل", "المصحف المعلّم", "مجوّد")
+        order.mapNotNull { s -> Reciters.all.filter { it.style == s }.takeIf { it.isNotEmpty() }?.let { s to it } } +
+            Reciters.all.map { it.style }.distinct().filter { it !in order }.map { s -> s to Reciters.all.filter { it.style == s } }
+    }
+    val listState = rememberLazyListState(
+        // the header rows come before each group, so the index counts them too
+        run {
+            var idx = 0
+            for ((_, list) in groups) { idx++; val i = list.indexOfFirst { it.id == Settings.reciter }; if (i >= 0) return@run idx + i; idx += list.size }
+            0
+        },
+    )
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
         key(changes, rev) {
             val r = Reciters.byId(Settings.reciter)
@@ -747,15 +780,23 @@ private fun ReciterSheet(currentSura: Int, onDismiss: () -> Unit) {
                     }
                 }
                 LazyColumn(state = listState, contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 16.dp), modifier = Modifier.height(420.dp)) {
-                    items(Reciters.all, key = { it.id }) { rc ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { QuranPlayer.changeReciter(ctx, rc.id) }.padding(horizontal = 8.dp, vertical = 2.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(rc.id == Settings.reciter, { QuranPlayer.changeReciter(ctx, rc.id) })
-                            Column {
-                                Text(rc.name, style = MaterialTheme.typography.titleMedium)
-                                Text(rc.style, style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                    groups.forEach { (style, list) ->
+                        item(key = "group-$style") {
+                            Text(
+                                style, style = MaterialTheme.typography.labelLarge, color = Palette.Emerald,
+                                modifier = Modifier.padding(start = 12.dp, top = 14.dp, bottom = 4.dp),
+                            )
+                        }
+                        items(list, key = { it.id }) { rc ->
+                            Row(
+                                Modifier.fillMaxWidth().clickable { QuranPlayer.changeReciter(ctx, rc.id) }.padding(horizontal = 8.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                RadioButton(rc.id == Settings.reciter, { QuranPlayer.changeReciter(ctx, rc.id) })
+                                Column {
+                                    Text(rc.name, style = MaterialTheme.typography.titleMedium)
+                                    Text(rc.style, style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                                }
                             }
                         }
                     }
