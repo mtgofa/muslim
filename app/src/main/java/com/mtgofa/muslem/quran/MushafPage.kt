@@ -80,7 +80,7 @@ private const val BASMALA_WORDS = "\uFE9D\uFEA1\uFEA5\uFEA9"
  * words are larger than the printed line allows, so they are reflowed: the page's words, in
  * order, are broken into new justified lines and the page grows taller (it then scrolls).
  */
-fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f, headerScale: Float = 1f): PageLayout {
+fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f, headerScale: Float = 1f, headerGap: Float = 0f): PageLayout {
     val pageFont = MushafFonts.page(ctx, data.page, style)
     val headerFont = MushafFonts.header(ctx, style)
     val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = pageFont; textSize = 100f }
@@ -109,7 +109,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
     val rowY = HashMap<Int, Float>()
     run {
         var acc = top
-        for (l in data.lines) { rowY[l.number] = acc; acc += if (l.type == GlyphType.HEADER) lh * headerScale else lh }
+        for (l in data.lines) { rowY[l.number] = acc; acc += if (l.type == GlyphType.HEADER) lh * (headerScale + headerGap) else lh }
     }
 
     val words = ArrayList<Placed>()
@@ -430,7 +430,5 @@ fun ayahCardPage(data: PageData, sura: Int, ayah: Int): PageData {
             }
         }
     }
-    // a little air between the surah band and the first line of the ayah
-    if (out.firstOrNull()?.type == GlyphType.HEADER) out.add(1, MushafLine(0, GlyphType.WORD, emptyList()))
     return PageData(data.page, out.mapIndexed { i, l -> l.copy(number = i + 1) })
 }

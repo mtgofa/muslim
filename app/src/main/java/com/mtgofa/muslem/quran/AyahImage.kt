@@ -18,7 +18,9 @@ import java.io.File
 object AyahImage {
     private const val W = 1080
     /** the surah band is drawn this much taller than a line, and its name larger with it */
-    private const val HEADER_SCALE = 1.7f
+    private const val HEADER_SCALE = 1.25f
+    /** air under the surah band, as a fraction of a line */
+    private const val HEADER_GAP = 0.2f
     private const val PAPER = 0xFFFFF8EB.toInt()
     private const val CREAM = 0xFFFBF5E6.toInt()
     private const val GOLD = 0xFFB8893A.toInt()
@@ -50,13 +52,13 @@ object AyahImage {
         val mstyle = MushafStyle.of(com.mtgofa.muslem.data.Settings.tajweed)
         // a first pass finds the text size the words fit at, then the lines are spaced for it
         val probe = layoutPage(ctx, card, inner.toFloat(), inner * 0.2f * 15, mstyle)
-        val lineH = probe.textSize * 1.3f
-        val lay = layoutPage(ctx, card, inner.toFloat(), lineH * 15, mstyle, headerScale = HEADER_SCALE)
+        val lineH = probe.textSize * 2.3f
+        val lay = layoutPage(ctx, card, inner.toFloat(), lineH * 15, mstyle, headerScale = HEADER_SCALE, headerGap = HEADER_GAP)
 
         // like a printed card: the Mushaf's banner and ayah on a cream ground, then a small logo
         // and the credit underneath in a soft gold
         val contentTop = 70
-        val bandExtra = if (card.lines.firstOrNull()?.type == GlyphType.HEADER) lineH * (HEADER_SCALE - 1) else 0f
+        val bandExtra = if (card.lines.firstOrNull()?.type == GlyphType.HEADER) lineH * (HEADER_SCALE + HEADER_GAP - 1) else 0f
         val contentH = (card.lines.size * lineH + bandExtra).toInt()
         val chip = 84
         val footTop = contentTop + contentH + 40
