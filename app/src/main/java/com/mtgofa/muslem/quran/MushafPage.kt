@@ -70,6 +70,9 @@ private val TITLE_SPREAD = listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f, 0f
 
 /** Pixel offsets of the passes that give the page text its printed weight. */
 private val WEIGHT_SPREAD = floatArrayOf(0f, 0f, 0.45f, 0f, 0f, 0.45f)
+/** Landscape only: the words move down by this fraction of a line, to free a stray mark on page 42. */
+private const val LANDSCAPE_NUDGE = 0.015f
+
 /** Basmala width as a fraction of the page width. */
 private const val BASMALA_WIDTH = 0.62f
 /** The long-form basmala in the title font, whose colour layers carry the tajweed. */
@@ -80,7 +83,7 @@ private const val BASMALA_WORDS = "\uFE9D\uFEA1\uFEA5\uFEA9"
  * words are larger than the printed line allows, so they are reflowed: the page's words, in
  * order, are broken into new justified lines and the page grows taller (it then scrolls).
  */
-fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f, headerScale: Float = 1f, headerGap: Float = 0f): PageLayout {
+fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f, headerScale: Float = 1f, headerGap: Float = 0f, nudge: Float = 0f): PageLayout {
     val pageFont = MushafFonts.page(ctx, data.page, style)
     val headerFont = MushafFonts.header(ctx, style)
     val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = pageFont; textSize = 100f }
@@ -152,7 +155,8 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
                 val gap = if (justify) (w - total) / (n - 1) else size * 0.14f
                 val lineW = total + gap * (n - 1)
                 var x = if (justify) w else (w + lineW) / 2f
-                val baseline = cy - (fm.ascent + fm.descent) / 2f
+                // nudge: a fraction of the line height, pushing the words down (landscape only)
+                val baseline = cy - (fm.ascent + fm.descent) / 2f + nudge * lh
                 line.glyphs.forEachIndexed { i, g ->
                     val gw = ws[i]
                     x -= gw
@@ -304,7 +308,7 @@ fun MushafPageView(
         val z = if (landscape) 1f else zoom
         var layout by remember(page, style, pw, pageH, z) { mutableStateOf<PageLayout?>(null) }
         LaunchedEffect(page, style, pw, pageH, z) {
-            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, z) }
+            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, z, nudge = if (landscape) LANDSCAPE_NUDGE else 0f) }
         }
         val ink = Color(0xFF1A1A1A)
         val hl = Color(0x2A0F7A62)
