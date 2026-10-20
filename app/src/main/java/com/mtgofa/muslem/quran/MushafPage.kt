@@ -80,7 +80,7 @@ private const val BASMALA_WORDS = "\uFE9D\uFEA1\uFEA5\uFEA9"
  * words are larger than the printed line allows, so they are reflowed: the page's words, in
  * order, are broken into new justified lines and the page grows taller (it then scrolls).
  */
-fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f): PageLayout {
+fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafStyle, zoom: Float = 1f, headerScale: Float = 1f): PageLayout {
     val pageFont = MushafFonts.page(ctx, data.page, style)
     val headerFont = MushafFonts.header(ctx, style)
     val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = pageFont; textSize = 100f }
@@ -105,6 +105,12 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
     val usedLines = data.lines.maxOfOrNull { it.number } ?: LINES
     val top = if (special) (h - usedLines * lineH * 1.08f) / 2f else 0f
     val lh = if (special) lineH * 1.08f else lineH
+    // rows top to bottom; a surah band may take a taller row (shared cards only)
+    val rowY = HashMap<Int, Float>()
+    run {
+        var acc = top
+        for (l in data.lines) { rowY[l.number] = acc; acc += if (l.type == GlyphType.HEADER) lh * headerScale else lh }
+    }
 
     val words = ArrayList<Placed>()
     val frames = ArrayList<Frame>()
@@ -119,16 +125,17 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
     data.firstAyah?.let { (s, a) -> wordCount[s to a] = QuranDb.wordsBefore(data.page, s, a) }
 
     for (line in data.lines) {
-        val y0 = top + (line.number - 1) * lh
-        val cy = y0 + lh / 2f
+        val y0 = rowY[line.number] ?: (top + (line.number - 1) * lh)
+        val rh = if (line.type == GlyphType.HEADER) lh * headerScale else lh
+        val cy = y0 + rh / 2f
         when (line.type) {
             GlyphType.HEADER -> {
-                hp.textSize = lh * TITLE_SIZE
+                hp.textSize = rh * TITLE_SIZE
                 val code = line.glyphs.first().code
                 // centre on the glyph's drawn outline: the font metrics include room for marks
                 // the title never uses, which pushed it low in the cartouche
                 val ink = android.graphics.Rect().also { hp.getTextBounds(code, 0, code.length, it) }
-                val rect = RectF(w * 0.01f, y0 + lh * 0.06f, w * 0.99f, y0 + lh * 0.94f)
+                val rect = RectF(w * 0.01f, y0 + rh * 0.06f, w * 0.99f, y0 + rh * 0.94f)
                 frames += Frame(rect, code, w / 2f - ink.exactCenterX(), rect.centerY() - ink.exactCenterY())
             }
             GlyphType.BASMALA -> {
@@ -423,5 +430,7 @@ fun ayahCardPage(data: PageData, sura: Int, ayah: Int): PageData {
             }
         }
     }
+    // a little air between the surah band and the first line of the ayah
+    if (out.firstOrNull()?.type == GlyphType.HEADER) out.add(1, MushafLine(0, GlyphType.WORD, emptyList()))
     return PageData(data.page, out.mapIndexed { i, l -> l.copy(number = i + 1) })
 }
