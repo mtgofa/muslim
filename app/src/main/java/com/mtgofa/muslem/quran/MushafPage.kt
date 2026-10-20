@@ -168,7 +168,7 @@ fun layoutPage(ctx: Context, data: PageData, w: Float, h: Float, style: MushafSt
             }
         }
     }
-    return PageLayout(data.page, size, lh * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas, basmalaSize, h)
+    return PageLayout(data.page, size, lh * headerScale * TITLE_SIZE, pageFont, headerFont, words, frames, basmalas, basmalaSize, h)
 }
 
 /** The enlarged page: same words and order, new line breaks; surah bands and basmala as printed. */

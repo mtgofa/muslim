@@ -60,7 +60,7 @@ object AyahImage {
         val contentH = (card.lines.size * lineH + bandExtra).toInt()
         val chip = 84
         val footTop = contentTop + contentH + 40
-        val H = footTop + chip + 150
+        val H = footTop + chip + 90
 
         val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
@@ -81,7 +81,7 @@ object AyahImage {
         val credit = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = ctx.resources.getFont(R.font.plexar_semibold); textSize = 26f; color = GOLD; textAlign = Paint.Align.CENTER
         }
-        c.drawText("بواسطة تطبيق مسلم", cx, (footTop + chip + 70).toFloat(), credit)
+        c.drawText("بواسطة تطبيق مسلم", cx, (footTop + chip + 36).toFloat(), credit)
         return bmp
     }
 }
