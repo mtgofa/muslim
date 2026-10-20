@@ -359,32 +359,69 @@ fun MushafPageView(
                         nc.drawLine(box.left + 10f, box.bottom - 2f, box.right - 10f, box.bottom - 2f, up)
                     }
                 }
-                // ---- surah title bands
-                val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.headerSize; color = ink.toArgb() }
-                for (f in lay.frames) {
-                    Ornaments.surahFrame(nc, f.rect)
-                    // the title font has a single weight: a small spread makes the name bolder
-                    val tw = lay.headerSize * TITLE_WEIGHT
-                    for ((dx, dy) in TITLE_SPREAD) nc.drawText(f.title, f.titleX + dx * tw, f.baseline + dy * tw, tp)
-                }
-                // ---- basmala
-                val bpaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.basmalaSize; color = ink.toArgb() }
-                for ((t, x, y) in lay.basmalas) nc.drawTextRun(t, 0, t.length, 0, t.length, x, y, true, bpaint)
-                // ---- words
-                // the printed page has heavier strokes than the raw outlines. Each word is drawn
-                // three times a fraction of a pixel apart (colour glyphs can't be stroked). Words
-                // are snapped to whole pixels first, so every word thickens by exactly the same
-                // amount — otherwise sub-pixel positions made some lines look bolder than others.
-                val wp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.pageFont; textSize = lay.textSize; color = ink.toArgb() }
-                for (pl in lay.words) {
-                    val s = pl.g.code
-                    val x = kotlin.math.round(pl.x); val y = kotlin.math.round(pl.baseline)
-                    for (k in WEIGHT_SPREAD.indices step 2) {
-                        nc.drawTextRun(s, 0, s.length, 0, s.length, x + WEIGHT_SPREAD[k], y + WEIGHT_SPREAD[k + 1], true, wp)
-                    }
-                }
+                drawMushaf(nc, lay, ink.toArgb())
             }
         }
         }
     }
+}
+
+/**
+ * The page's ink: surah bands, basmala and words, exactly as the Mushaf prints them. Shared by
+ * the reader and the shared card, so both look the same.
+ */
+fun drawMushaf(nc: android.graphics.Canvas, lay: PageLayout, ink: Int) {
+    // ---- surah title bands
+    val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.headerSize; color = ink }
+    for (f in lay.frames) {
+        Ornaments.surahFrame(nc, f.rect)
+        // the title font has a single weight: a small spread makes the name bolder
+        val tw = lay.headerSize * TITLE_WEIGHT
+        for ((dx, dy) in TITLE_SPREAD) nc.drawText(f.title, f.titleX + dx * tw, f.baseline + dy * tw, tp)
+    }
+    // ---- basmala
+    val bpaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.headerFont; textSize = lay.basmalaSize; color = ink }
+    for ((t, x, y) in lay.basmalas) nc.drawTextRun(t, 0, t.length, 0, t.length, x, y, true, bpaint)
+    // ---- words
+    // the printed page has heavier strokes than the raw outlines. Each word is drawn three times a
+    // fraction of a pixel apart (colour glyphs can't be stroked). Words are snapped to whole pixels
+    // first, so every word thickens by exactly the same amount.
+    val wp = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = lay.pageFont; textSize = lay.textSize; color = ink }
+    for (pl in lay.words) {
+        val s = pl.g.code
+        val x = kotlin.math.round(pl.x); val y = kotlin.math.round(pl.baseline)
+        for (k in WEIGHT_SPREAD.indices step 2) {
+            nc.drawTextRun(s, 0, s.length, 0, s.length, x + WEIGHT_SPREAD[k], y + WEIGHT_SPREAD[k + 1], true, wp)
+        }
+    }
+}
+
+/**
+ * One ayah as its own little page: its words and ayah-end mark in order, with the surah band and
+ * basmala above when it opens the surah. Lines are renumbered so they stack on the card.
+ */
+fun ayahCardPage(data: PageData, sura: Int, ayah: Int): PageData {
+    val out = ArrayList<MushafLine>()
+    // the surah's band, drawn from its name glyph (U+F100 + sura − 1), as the Mushaf prints it
+    if (ayah != 1) out += MushafLine(0, GlyphType.HEADER, listOf(Glyph(GlyphType.HEADER, (0xF100 + sura - 1).toChar().toString(), sura, 0)))
+    var header: MushafLine? = null
+    var basmala: MushafLine? = null
+    var started = false
+    for (l in data.lines) {
+        when (l.type) {
+            GlyphType.HEADER -> { header = l; basmala = null }
+            GlyphType.BASMALA -> basmala = l
+            else -> {
+                val mine = l.glyphs.filter { it.sura == sura && it.ayah == ayah }
+                if (mine.isEmpty()) continue
+                if (ayah == 1 && !started) {
+                    started = true
+                    header?.let { out += it }
+                    if (sura != 9) basmala?.let { out += it }
+                }
+                out += MushafLine(0, l.type, mine)
+            }
+        }
+    }
+    return PageData(data.page, out.mapIndexed { i, l -> l.copy(number = i + 1) })
 }

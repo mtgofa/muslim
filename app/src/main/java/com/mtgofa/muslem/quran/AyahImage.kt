@@ -7,7 +7,6 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -28,8 +27,8 @@ object AyahImage {
     private const val MUTED = 0xFF6B6B6B.toInt()
 
     /** Draws the card and returns a shareable image intent, or null if it could not be made. */
-    fun shareIntent(ctx: Context, text: String, label: String): Intent? = runCatching {
-        val bmp = render(ctx, text, label)
+    fun shareIntent(ctx: Context, sura: Int, ayah: Int, text: String, label: String): Intent? = runCatching {
+        val bmp = render(ctx, sura, ayah, text, label) ?: return@runCatching null
         val dir = File(ctx.cacheDir, "shared").apply { mkdirs() }
         val file = File(dir, "ayah.png")
         file.outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -39,51 +38,56 @@ object AyahImage {
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }.getOrNull()
 
-    private fun render(ctx: Context, text: String, label: String): Bitmap {
+    /**
+     * The ayah set in the Mushaf's own font and colours, with the surah band above it when it opens
+     * the surah and its ayah-end mark (with the number) after it; the reference and the logo follow.
+     */
+    private fun render(ctx: Context, sura: Int, ayah: Int, text: String, label: String): Bitmap? {
         val pad = 90
         val inner = W - 2 * pad
-        val logoDrawable = ContextCompat.getDrawable(ctx, R.mipmap.ic_launcher)
-        val tf = ctx.resources.getFont(R.font.plexar_regular)
-        val bold = ctx.resources.getFont(R.font.plexar_bold)
-
-        val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = tf; textSize = 58f; color = INK }
-        val layout = StaticLayout.Builder.obtain(text, 0, text.length, body, inner)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER).setLineSpacing(0f, 1.55f).build()
-        val ref = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = bold; textSize = 40f; color = EMERALD }
-        val refLayout = StaticLayout.Builder.obtain(label, 0, label.length, ref, inner)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER).build()
+        val page = QuranDb.pageOf(sura, ayah)
+        val card = ayahCardPage(QuranDb.page(page), sura, ayah)
+        if (card.lines.isEmpty()) return null
+        val mstyle = MushafStyle.of(com.mtgofa.muslem.data.Settings.tajweed)
+        // a first pass finds the text size the words fit at, then the lines are spaced for it
+        val probe = layoutPage(ctx, card, inner.toFloat(), inner * 0.2f * 15, mstyle)
+        val lineH = probe.textSize * 1.3f
+        val lay = layoutPage(ctx, card, inner.toFloat(), lineH * 15, mstyle)
 
         val logo = 150
-        val footerH = logo + 110
+        val contentTop = 130
+        val contentH = (card.lines.size * lineH).toInt()
         val cardTop = 80
-        val textTop = cardTop + 110
-        val refTop = textTop + layout.height + 40
-        val cardBottom = refTop + refLayout.height + 60
-        val H = cardBottom + footerH + 80
+        val cardBottom = contentTop + contentH + 70
+        val refFont = ctx.resources.getFont(R.font.plexar_bold)
+        val ref = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = refFont; textSize = 40f; color = EMERALD }
+        val refLayout = StaticLayout.Builder.obtain(label, 0, label.length, ref, inner)
+            .setAlignment(Layout.Alignment.ALIGN_CENTER).build()
+        val refTop = cardBottom + 40
+        val footTop = refTop + refLayout.height + 40
+        val H = footTop + logo + 150
 
-        val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(W, H.toInt(), Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         c.drawColor(Color.WHITE)
 
-        // the card: paper, with a thin emerald frame
-        val card = RectF(40f, cardTop.toFloat(), (W - 40).toFloat(), cardBottom.toFloat())
-        val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PAPER }
-        c.drawRoundRect(card, 48f, 48f, bg)
-        val frame = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = EMERALD; style = Paint.Style.STROKE; strokeWidth = 4f }
-        c.drawRoundRect(card, 48f, 48f, frame)
+        // the card: the Mushaf's paper, with a thin emerald frame
+        val card2 = RectF(40f, cardTop.toFloat(), (W - 40).toFloat(), cardBottom.toFloat())
+        c.drawRoundRect(card2, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = PAPER })
+        c.drawRoundRect(card2, 48f, 48f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = EMERALD; style = Paint.Style.STROKE; strokeWidth = 4f })
 
-        c.save(); c.translate(pad.toFloat(), textTop.toFloat()); layout.draw(c); c.restore()
+        c.save(); c.translate(pad.toFloat(), contentTop.toFloat()); drawMushaf(c, lay, INK); c.restore()
         c.save(); c.translate(pad.toFloat(), refTop.toFloat()); refLayout.draw(c); c.restore()
 
         // footer: the logo, and the app's name under it
-        val footTop = cardBottom + 60
+        val logoDrawable = ContextCompat.getDrawable(ctx, R.mipmap.ic_launcher)
         val lx = (W - logo) / 2
         logoDrawable?.let {
             it.setBounds(lx, footTop, lx + logo, footTop + logo)
             it.draw(c)
         }
-        val name = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { typeface = bold; textSize = 50f; color = EMERALD; textAlign = Paint.Align.CENTER }
-        c.drawText(ctx.getString(R.string.app_name), (W / 2).toFloat(), (footTop + logo + 70).toFloat(), name)
+        val credit = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = refFont; textSize = 44f; color = EMERALD; textAlign = Paint.Align.CENTER }
+        c.drawText("بواسطة تطبيق مسلم", (W / 2).toFloat(), (footTop + logo + 80).toFloat(), credit)
         return bmp
     }
 }

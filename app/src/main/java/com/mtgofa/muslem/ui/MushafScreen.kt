@@ -465,7 +465,7 @@ private fun AyahSheet(a: AyahRef, onDismiss: () -> Unit, onRepeat: () -> Unit) {
         confirmButton = {
             TextButton(onClick = {
                 askShare = false
-                com.mtgofa.muslem.quran.AyahImage.shareIntent(ctx, "﴿$text﴾", label)?.let {
+                com.mtgofa.muslem.quran.AyahImage.shareIntent(ctx, a.sura, a.ayah, "﴿$text﴾", label)?.let {
                     ctx.startActivity(Intent.createChooser(it, "مشاركة الآية"))
                     onDismiss()
                 } ?: Toast.makeText(ctx, "تعذّر إنشاء الصورة", Toast.LENGTH_SHORT).show()
