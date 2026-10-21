@@ -250,6 +250,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                     onReliability = { push(Route.Reliability) },
                     onReciters = { push(Route.Reciters) },
                     onAbout = { push(Route.About) },
+                    onFeedback = { push(Route.Feedback) },
                     onQiyam = { push(Route.Qiyam) },
                 )
                 Route.Location -> LocationScreen(::pop)
@@ -257,7 +258,7 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                 Route.Prayers -> PrayersScreen(::pop)
                 Route.Reliability -> ReliabilityScreen(::pop)
                 Route.Reciters -> RecitersScreen(::pop)
-                Route.About -> AboutScreen(::pop) { push(Route.Feedback) }
+                Route.About -> AboutScreen(::pop)
                 Route.Feedback -> FeedbackScreen(::pop)
                 is Route.Mushaf -> MushafScreen(route.page, route.focus, route.wird, ::pop)
                 Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }

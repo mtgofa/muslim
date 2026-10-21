@@ -123,6 +123,7 @@ fun SettingsScreen(
     onReliability: () -> Unit,
     onReciters: () -> Unit,
     onAbout: () -> Unit,
+    onFeedback: () -> Unit,
     onQiyam: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -183,6 +184,8 @@ fun SettingsScreen(
             }
             SectionTitle("التطبيق")
             Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
+                SettingRow("أرسل ملاحظة أو أبلغ عن مشكلة", "يفتح بريدك لإرسال الرسالة", Icons.Rounded.Email, onFeedback) { Chevron() }
+                RowDivider()
                 SettingRow("حول التطبيق", "الإصدار ${BuildConfig.VERSION_NAME}", Icons.Rounded.SystemUpdate, onAbout) { Chevron() }
             }
         }
@@ -607,7 +610,7 @@ fun RecitersScreen(onBack: () -> Unit) {
 // ============================================================================ about / update
 
 @Composable
-fun AboutScreen(onBack: () -> Unit, onFeedback: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -620,9 +623,6 @@ fun AboutScreen(onBack: () -> Unit, onFeedback: () -> Unit) {
             Text("مسلم", style = MaterialTheme.typography.headlineMedium)
             Text("مواقيت الصلاة والأذان والمصحف", style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
             Text("الإصدار ${BuildConfig.VERSION_NAME} (${arabicDigits(BuildConfig.VERSION_CODE)})", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
-        }
-        Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
-            SettingRow("أرسل ملاحظة أو أبلغ عن مشكلة", "يفتح بريدك لإرسال الرسالة", Icons.Rounded.Email, onFeedback) { Chevron() }
         }
         Spacer(Modifier.height(28.dp))
         Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
