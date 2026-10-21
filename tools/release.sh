@@ -42,12 +42,12 @@ notes="${*:-}"
 
 ./gradlew -q assembleRelease
 mkdir -p dist
-apk="dist/Muslem.apk"
+apk="dist/Muslim.apk"
 cp app/build/outputs/apk/release/app-release.apk "$apk"
 sha=$(sha256sum "$apk" | cut -d' ' -f1)
 
 body="${notes:+$notes
 
 }sha256: $sha"
-gh release create "v$name" "$apk" -R "$REPO" --title "Muslem $name (code $code)" --notes "$body" --latest
+gh release create "v$name" "$apk" -R "$REPO" --title "Muslim $name (code $code)" --notes "$body" --latest
 echo "released v$name (code $code) — $(du -h "$apk" | cut -f1), sha256 $sha"

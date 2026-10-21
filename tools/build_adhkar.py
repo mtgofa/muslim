@@ -9,7 +9,7 @@ OUT = sys.argv[1] if len(sys.argv) > 1 else "content/adhkar.json"
 def get(url):
     for attempt in range(4):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Linux; Android 14) Muslem"})
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Linux; Android 14) Muslim"})
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.loads(r.read().decode("utf-8-sig"))
         except Exception as e:

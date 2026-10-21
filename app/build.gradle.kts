@@ -15,13 +15,13 @@ val keystoreProps = Properties().apply {
 val hasSigning = keystorePropsFile.exists()
 
 android {
-    namespace = "com.mtgofa.muslem"
-    compileSdk = 34
+    namespace = "com.mtgofa.muslim"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mtgofa.muslem"
+        applicationId = "com.mtgofa.muslim"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 61
         versionName = "1.0.60"
         vectorDrawables { useSupportLibrary = true }

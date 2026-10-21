@@ -38,7 +38,7 @@
 
 ## التحميل
 
-من صفحة [**Releases**](https://github.com/mtgofa/muslim/releases/latest) نزّل `Muslem.apk` وثبّته.
+من صفحة [**Releases**](https://github.com/mtgofa/muslim/releases/latest) نزّل `Muslim.apk` وثبّته.
 التطبيق **يحدّث نفسه** — يظهر تنبيه عند صدور نسخة جديدة، ويمكن الفحص يدوياً من «حول التطبيق».
 
 عند أول فتح للمصحف تُنزَّل حزمة صفحات المصحف (~٧٠ م.ب) مرة واحدة فقط، فتبقى تحديثات التطبيق صغيرة.
@@ -75,7 +75,7 @@ tools/release.sh pack                      # ينشر حزمة صفحات الم
 السور، الأجزاء، الأرباع) وخط عناوين السور، ويضع خطوط الصفحات الـ ٦٠٤ في `dist/mushaf-pack/`.
 
 ```
-app/src/main/java/com/mtgofa/muslem/
+app/src/main/java/com/mtgofa/muslim/
   MainActivity.kt            التنقل، الترحيب، نافذة التحديث
   prayer/PrayerCalc.kt       الحساب الفلكي للمواقيت
   prayer/Scheduler.kt        الأحداث (قبل الأذان، الأذان، الإقامة) والمنبّه الدقيق

@@ -10,7 +10,7 @@ import gzip, json, sys, urllib.request
 OUT = sys.argv[1] if len(sys.argv) > 1 else "content/meanings.json"
 PREFERRED = [491, 1424, 208, 327]  # Siraj, Kalimat al-Quran, Tadhkirat al-Arib, al-Tibyan
 
-req = urllib.request.Request("https://quranpedia.net/dumps/meanings.json.gz", headers={"User-Agent": "Muslem build"})
+req = urllib.request.Request("https://quranpedia.net/dumps/meanings.json.gz", headers={"User-Agent": "Muslim build"})
 with urllib.request.urlopen(req, timeout=120) as r:
     dump = json.loads(gzip.decompress(r.read()).decode("utf-8"))
 
