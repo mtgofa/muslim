@@ -1,5 +1,9 @@
 package com.mtgofa.muslim.ui
 
+import androidx.compose.material.icons.rounded.Email
+import android.widget.Toast
+import android.net.Uri
+import android.content.Intent
 import com.mtgofa.muslim.prayer.AlertSound
 import android.Manifest
 import android.os.Build
@@ -179,7 +183,7 @@ fun SettingsScreen(
             }
             SectionTitle("التطبيق")
             Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
-                SettingRow("حول التطبيق والتحديثات", "الإصدار ${BuildConfig.VERSION_NAME}", Icons.Rounded.SystemUpdate, onAbout) { Chevron() }
+                SettingRow("حول التطبيق", "الإصدار ${BuildConfig.VERSION_NAME}", Icons.Rounded.SystemUpdate, onAbout) { Chevron() }
             }
         }
     }
@@ -603,7 +607,7 @@ fun RecitersScreen(onBack: () -> Unit) {
 // ============================================================================ about / update
 
 @Composable
-fun AboutScreen(onBack: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit, onFeedback: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -613,10 +617,66 @@ fun AboutScreen(onBack: () -> Unit) {
                 Icon(androidx.compose.ui.res.painterResource(com.mtgofa.muslim.R.drawable.ic_stat_mosque), null, tint = Color.White, modifier = Modifier.size(48.dp))
             }
             Spacer(Modifier.height(12.dp))
-            Text("مُسلم", style = MaterialTheme.typography.headlineMedium)
+            Text("مسلم", style = MaterialTheme.typography.headlineMedium)
             Text("مواقيت الصلاة والأذان والمصحف", style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
             Text("الإصدار ${BuildConfig.VERSION_NAME} (${arabicDigits(BuildConfig.VERSION_CODE)})", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
         }
+        Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
+            SettingRow("أرسل ملاحظة أو أبلغ عن مشكلة", "يفتح بريدك لإرسال الرسالة", Icons.Rounded.Email, onFeedback) { Chevron() }
+        }
+        Spacer(Modifier.height(28.dp))
+        Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("تقبل الله منا ومنكم", style = MaterialTheme.typography.titleMedium, color = Palette.EmeraldDark)
+            Spacer(Modifier.height(6.dp))
+            Text("نسأل الله الثواب لنا ولكم", style = MaterialTheme.typography.bodyMedium, color = Palette.Muted)
+        }
         Spacer(Modifier.height(24.dp))
+    }
+}
+
+
+/** A page for a note or a problem report: it opens the user's own mail app with the message ready. */
+@Composable
+fun FeedbackScreen(onBack: () -> Unit) {
+    val ctx = LocalContext.current
+    var kind by remember { mutableStateOf("مشكلة") }
+    var text by remember { mutableStateOf("") }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        TopBar("أرسل ملاحظة", onBack)
+        Column(Modifier.padding(horizontal = 20.dp)) {
+            Text("نوع الرسالة", style = MaterialTheme.typography.labelLarge, color = Palette.Muted)
+            Spacer(Modifier.height(6.dp))
+            Segmented(listOf("مشكلة", "اقتراح", "أخرى"), kind, { it }) { kind = it }
+            Spacer(Modifier.height(14.dp))
+            OutlinedTextField(
+                value = text, onValueChange = { text = it },
+                modifier = Modifier.fillMaxWidth().height(200.dp),
+                placeholder = { Text("اكتب ما حدث، وما الذي كنت تفعله قبلها") },
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "سيُفتح بريدك ومعه معلومات الإصدار والجهاز لمساعدتنا، ويمكنك حذفها قبل الإرسال.",
+                style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
+            )
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    val body = buildString {
+                        append(text.trim()).append("\n\n---\n")
+                        append("الإصدار: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})\n")
+                        append("الجهاز: ${Build.MANUFACTURER} ${Build.MODEL}\n")
+                        append("أندرويد: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n")
+                    }
+                    val mail = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:gofait25@gmail.com"))
+                        .putExtra(Intent.EXTRA_SUBJECT, "مسلم — $kind")
+                        .putExtra(Intent.EXTRA_TEXT, body)
+                    runCatching { ctx.startActivity(mail) }.onFailure {
+                        Toast.makeText(ctx, "لا يوجد تطبيق بريد. أرسل إلى gofait25@gmail.com", Toast.LENGTH_LONG).show()
+                    }
+                },
+                enabled = text.isNotBlank(),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+            ) { Text("فتح البريد للإرسال") }
+        }
     }
 }

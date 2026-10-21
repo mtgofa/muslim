@@ -65,6 +65,7 @@ import com.mtgofa.muslim.quran.AyahRef
 import com.mtgofa.muslim.quran.QuranDb
 import com.mtgofa.muslim.quran.QuranPlayer
 import com.mtgofa.muslim.ui.AboutScreen
+import com.mtgofa.muslim.ui.FeedbackScreen
 import com.mtgofa.muslim.ui.AdhkarChapterScreen
 import com.mtgofa.muslim.ui.AdhkarHomeScreen
 import com.mtgofa.muslim.ui.HisnScreen
@@ -97,6 +98,7 @@ sealed interface Route {
     data object Reliability : Route
     data object Reciters : Route
     data object About : Route
+    data object Feedback : Route
     /** [wird]: the khatma being read (0 = ordinary reading, which keeps its own place) */
     data class Mushaf(val page: Int, val focus: AyahRef?, val wird: Long = 0) : Route
     data object Hisn : Route
@@ -255,7 +257,8 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
                 Route.Prayers -> PrayersScreen(::pop)
                 Route.Reliability -> ReliabilityScreen(::pop)
                 Route.Reciters -> RecitersScreen(::pop)
-                Route.About -> AboutScreen(::pop)
+                Route.About -> AboutScreen(::pop) { push(Route.Feedback) }
+                Route.Feedback -> FeedbackScreen(::pop)
                 is Route.Mushaf -> MushafScreen(route.page, route.focus, route.wird, ::pop)
                 Route.Hisn -> HisnScreen(::pop) { push(Route.Adhkar(it)) }
                 Route.Qibla -> QiblaScreen(::pop)
