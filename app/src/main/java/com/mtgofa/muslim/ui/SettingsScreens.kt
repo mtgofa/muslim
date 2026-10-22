@@ -604,7 +604,7 @@ fun RecitersScreen(onBack: () -> Unit) {
                         Column(Modifier.weight(1f)) {
                             Text(r.name, style = MaterialTheme.typography.titleMedium)
                             Text(
-                                r.style + if (size > 0) " · محمّل ${arabicDigits("%.1f".format(size / 1048576f))} م.ب" else "",
+                                r.style + if (size > 0) " · محمّل ${arabicDigits("%.1f".format(java.util.Locale.US, size / 1048576f))} م.ب" else "",
                                 style = MaterialTheme.typography.bodySmall, color = Palette.Muted,
                             )
                         }

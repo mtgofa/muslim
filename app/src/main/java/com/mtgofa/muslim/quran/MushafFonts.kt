@@ -25,7 +25,7 @@ object MushafFonts {
 
     @Synchronized
     fun page(ctx: Context, page: Int, style: MushafStyle): Typeface =
-        load(ctx, "p%03d".format(page), style)
+        load(ctx, "p%03d".format(java.util.Locale.US, page), style)
 
     /** Surah-title frames and the basmala. */
     @Synchronized

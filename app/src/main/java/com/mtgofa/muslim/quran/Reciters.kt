@@ -28,7 +28,7 @@ object Reciters {
 
     fun byId(id: String) = all.firstOrNull { it.id == id } ?: all.first()
 
-    private fun name(sura: Int, ayah: Int) = "%03d%03d.mp3".format(sura, ayah)
+    private fun name(sura: Int, ayah: Int) = "%03d%03d.mp3".format(java.util.Locale.US, sura, ayah)
 
     fun url(r: Reciter, sura: Int, ayah: Int) = BASE + r.id + "/" + name(sura, ayah)
 

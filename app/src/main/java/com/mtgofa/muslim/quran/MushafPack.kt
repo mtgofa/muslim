@@ -31,7 +31,7 @@ object MushafPack {
     fun dir(ctx: Context) = File(ctx.filesDir, "mushaf-pack")
     private fun marker(ctx: Context) = File(dir(ctx), ".complete")
 
-    fun pageFile(ctx: Context, page: Int) = File(dir(ctx), "p%03d.ttf".format(page))
+    fun pageFile(ctx: Context, page: Int) = File(dir(ctx), "p%03d.ttf".format(java.util.Locale.US, page))
 
     fun refresh(ctx: Context) {
         if (_state.value is State.Downloading) return
