@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Button
@@ -139,6 +140,12 @@ fun SettingsScreen(
                 SettingRow("طريقة الحساب", Settings.method.ar, Icons.Rounded.Calculate, { picker = "method" }) { Chevron() }
                 RowDivider()
                 SettingRow("صلاة العصر", Settings.madhab.ar, Icons.Rounded.Tune, { picker = "madhab" }) { Chevron() }
+                RowDivider()
+                SettingRow("ضبط الساعة", "إذا كانت كل المواقيت متقدّمة أو متأخرة ساعة (التوقيت الصيفي)", Icons.Rounded.Schedule) {
+                    Stepper(Settings.hourShift, -1..1, format = { if (it == 0) "تلقائي" else (if (it > 0) "+" else "−") + arabicDigits(1) + " ساعة" }) {
+                        Settings.hourShift = it; Scheduler.schedule(ctx)
+                    }
+                }
                 RowDivider()
                 SettingRow("التاريخ الهجري", Hijri.of(LocalDate.now()).toString(), Icons.Rounded.CalendarMonth) {
                     Stepper(Settings.hijriAdjust, -2..2, format = { if (it == 0) "بدون" else (if (it > 0) "+" else "−") + arabicDigits(kotlin.math.abs(it)) + " يوم" }) {
@@ -420,6 +427,8 @@ fun LocationScreen(onBack: () -> Unit) {
                 val name = Locator.placeName(ctx, loc.latitude, loc.longitude)
                     ?: ("قرب " + Locator.nearestCity(loc.latitude, loc.longitude).name)
                 Settings.setLocation(name, loc.latitude, loc.longitude, null, "gps")
+                // the country's own method (Umm al-Qura in Saudi Arabia, the Egyptian one in Egypt…)
+                Locator.cityNear(loc.latitude, loc.longitude)?.let { Settings.method = it.method }
                 Scheduler.schedule(ctx)
                 onBack()
             }

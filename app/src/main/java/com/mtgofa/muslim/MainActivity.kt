@@ -234,7 +234,13 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
             LocationScreen(onBack = { pop(); if (Settings.hasLocation) { Settings.onboarded = true; onboarded = true } })
         } else Welcome(
             onLocation = { push(Route.Location) },
-            onSkip = { Settings.onboarded = true; onboarded = true; Scheduler.schedule(ctx) },
+            onSkip = {
+                // save Cairo for real (its place, zone and method), not just leave the defaults
+                val cairo = com.mtgofa.muslim.prayer.Cities.all.first()
+                Settings.setLocation(cairo.name, cairo.lat, cairo.lng, cairo.zone, "city")
+                Settings.method = cairo.method
+                Settings.onboarded = true; onboarded = true; Scheduler.schedule(ctx)
+            },
         )
         return
     }

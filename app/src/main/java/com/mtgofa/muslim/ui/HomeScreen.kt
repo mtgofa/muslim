@@ -173,6 +173,29 @@ fun HomeScreen(
                 onLocation = onLocation,
             )
         }
+        // the phone keeps another country's time than the chosen city: likely the wrong place
+        // (a visitor still on the default Cairo), so the times would be off by the difference
+        val phoneZone = java.time.ZoneId.systemDefault()
+        val placeZone = Settings.zone
+        val zonePair = "${phoneZone.id}|${placeZone.id}"
+        if (phoneZone.rules != placeZone.rules && Settings.zoneWarnDismissed != zonePair) item {
+            Card(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), color = Palette.GoldSoft, onClick = onLocation) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.WarningAmber, null, tint = Color(0xFF9A6B12))
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("هل أنت في ${Settings.locationName}؟", style = MaterialTheme.typography.titleSmall, color = Color(0xFF6B4A12))
+                            Text("توقيت هاتفك يختلف عن توقيت ${Settings.locationName}، فقد تكون المواقيت لمكان آخر. حدّد موقعك.", style = MaterialTheme.typography.bodySmall, color = Color(0xFF8A6420))
+                        }
+                        Icon(Icons.Rounded.ChevronLeft, null, tint = Color(0xFF9A6B12))
+                    }
+                    androidx.compose.material3.TextButton(onClick = { Settings.zoneWarnDismissed = zonePair }, modifier = Modifier.align(Alignment.End)) {
+                        Text("نعم، أنا هنا", color = Color(0xFF6B4A12))
+                    }
+                }
+            }
+        }
         if (!healthy) item {
             Card(
                 Modifier.padding(horizontal = 16.dp, vertical = 6.dp),

@@ -42,9 +42,29 @@ object Settings {
     val lng get() = sp.getFloat("lng", 31.2357f).toDouble()
     /** "gps" or "city" */
     val locationSource get() = sp.getString("locSrc", "city")!!
+    /**
+     * The clock of the place the times are for: the chosen city's zone; the phone's own zone for
+     * a GPS fix; Cairo's for the default place (Cairo) when nothing was chosen, so a phone set to
+     * another country's time still gets Cairo's times at Cairo's hours.
+     */
     val zone: ZoneId
-        get() = runCatching { ZoneId.of(sp.getString("zone", null) ?: ZoneId.systemDefault().id) }
-            .getOrDefault(ZoneId.systemDefault())
+        get() {
+            val id = sp.getString("zone", null) ?: if (hasLocation) ZoneId.systemDefault().id else "Africa/Cairo"
+            return runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.systemDefault())
+        }
+
+    /**
+     * Whole hours added to every time, for a phone whose time-zone data is out of date (Egypt's
+     * summer time came back in 2023) or set by hand to another zone. 0 = follow the zone.
+     */
+    var hourShift: Int
+        get() = sp.getInt("hourShift", 0)
+        set(v) = edit { putInt("hourShift", v) }
+
+    /** "phone zone|location zone" the user said is fine, so the warning stays away for that pair. */
+    var zoneWarnDismissed: String
+        get() = sp.getString("zoneWarnOk", "")!!
+        set(v) = edit { putString("zoneWarnOk", v) }
 
     fun setLocation(name: String, lat: Double, lng: Double, zone: String?, source: String) = edit {
         putString("locName", name); putFloat("lat", lat.toFloat()); putFloat("lng", lng.toFloat())
@@ -66,7 +86,7 @@ object Settings {
     // ---- per prayer ----------------------------------------------------------------------
     fun offset(p: Prayer) = sp.getInt("off_${p.name}", 0)
     fun setOffset(p: Prayer, v: Int) = edit { putInt("off_${p.name}", v) }
-    fun offsets(): Map<Prayer, Int> = Prayer.entries.associateWith { offset(it) }
+    fun offsets(): Map<Prayer, Int> = Prayer.entries.associateWith { offset(it) + hourShift * 60 }
 
     fun mode(p: Prayer): AlertMode = runCatching {
         AlertMode.valueOf(sp.getString("mode_${p.name}", if (p.hasAdhan) "ADHAN" else "SILENT")!!)

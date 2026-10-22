@@ -51,6 +51,13 @@ object Locator {
         }.getOrNull()
     }
 
+    /** The nearest built-in city if it is within [km], to take its country's calculation method. */
+    fun cityNear(lat: Double, lng: Double, km: Float = 400f): City? {
+        val c = nearestCity(lat, lng)
+        val r = FloatArray(1); Location.distanceBetween(lat, lng, c.lat, c.lng, r)
+        return c.takeIf { r[0] <= km * 1000 }
+    }
+
     /** Nearest built-in city, used to name a GPS fix when the geocoder is unavailable. */
     fun nearestCity(lat: Double, lng: Double): City = Cities.all.minBy {
         val r = FloatArray(1); Location.distanceBetween(lat, lng, it.lat, it.lng, r); r[0]
