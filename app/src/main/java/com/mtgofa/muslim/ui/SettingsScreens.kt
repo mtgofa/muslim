@@ -676,16 +676,27 @@ fun FeedbackScreen(onBack: () -> Unit) {
                         append("الجهاز: ${Build.MANUFACTURER} ${Build.MODEL}\n")
                         append("أندرويد: ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})\n")
                     }
-                    val mail = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:gofait25@gmail.com"))
-                        .putExtra(Intent.EXTRA_SUBJECT, "مسلم — $kind")
-                        .putExtra(Intent.EXTRA_TEXT, body)
-                    runCatching { ctx.startActivity(mail) }.onFailure {
-                        Toast.makeText(ctx, "لا يوجد تطبيق بريد. أرسل إلى gofait25@gmail.com", Toast.LENGTH_LONG).show()
+                    if (!com.mtgofa.muslim.data.Feedback.mail(ctx, "مسلم — $kind", body)) {
+                        Toast.makeText(ctx, "لا يوجد تطبيق بريد. أرسل إلى ${com.mtgofa.muslim.data.Feedback.EMAIL}", Toast.LENGTH_LONG).show()
                     }
                 },
                 enabled = text.isNotBlank(),
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text("فتح البريد للإرسال") }
+            // the last crash, kept on the phone: send it from here with any app (mail, WhatsApp…)
+            val report = remember { com.mtgofa.muslim.data.CrashLog.read(ctx) }
+            if (report != null) {
+                Spacer(Modifier.height(24.dp))
+                Text("تقرير آخر عطل محفوظ على الهاتف", style = MaterialTheme.typography.titleSmall)
+                Text("أرسله لنا لنعرف سبب العطل ونصلحه", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = {
+                        if (!com.mtgofa.muslim.data.CrashLog.share(ctx, report)) Toast.makeText(ctx, "تعذّر فتح تطبيق للإرسال", Toast.LENGTH_LONG).show()
+                    },
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                ) { Text("إرسال تقرير العطل") }
+            }
         }
     }
 }

@@ -204,24 +204,24 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
 
     BackHandler(stack.size > 1) { pop() }
 
-    // the app crashed last time: offer to mail the report, which is the only way we learn why
-    var crash by remember { mutableStateOf(com.mtgofa.muslim.data.CrashLog.read(ctx)) }
+    // the app crashed last time: offer to send the report, which is the only way we learn why.
+    // It stays on the phone until it has gone out (also reachable from the feedback page).
+    var crash by remember { mutableStateOf(com.mtgofa.muslim.data.CrashLog.unseen(ctx)) }
     crash?.let { report ->
-        fun done() { com.mtgofa.muslim.data.CrashLog.clear(ctx); crash = null }
+        com.mtgofa.muslim.data.CrashLog.markSeen(ctx)
         AlertDialog(
-            onDismissRequest = ::done,
+            onDismissRequest = { crash = null },
             title = { Text("حدث خطأ في المرة السابقة") },
-            text = { Text("نأسف لذلك. أرسل لنا تقرير العطل لنصلحه، وهو لا يحوي أي بيانات شخصية.") },
+            text = { Text("نأسف لذلك. أرسل لنا تقرير العطل لنصلحه (بالبريد أو واتساب)، وهو لا يحوي أي بيانات شخصية.") },
             confirmButton = {
                 TextButton(onClick = {
-                    val mail = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:gofait25@gmail.com"))
-                        .putExtra(Intent.EXTRA_SUBJECT, "مسلم — تقرير عطل")
-                        .putExtra(Intent.EXTRA_TEXT, report)
-                    runCatching { ctx.startActivity(mail) }
-                    done()
+                    if (!com.mtgofa.muslim.data.CrashLog.share(ctx, report)) {
+                        android.widget.Toast.makeText(ctx, "تعذّر فتح تطبيق للإرسال. التقرير محفوظ في «أرسل ملاحظة»", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    crash = null
                 }) { Text("إرسال التقرير") }
             },
-            dismissButton = { TextButton(onClick = ::done) { Text("تجاهل") } },
+            dismissButton = { TextButton(onClick = { crash = null }) { Text("لاحقاً") } },
         )
     }
 
