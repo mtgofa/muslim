@@ -59,6 +59,13 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
+        // the release build (same R8) under another id, to hand to a tester next to the Play app
+        create("beta") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {

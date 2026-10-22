@@ -44,14 +44,19 @@ object Http {
     }
 
     /** Download [url] into [out] atomically (via a .part file). Returns true on success. */
-    fun download(url: String, out: File, progress: (Float) -> Unit = {}): Boolean = try { downloadOrThrow(url, out, progress) } catch (e: Exception) { false }
+    fun download(url: String, out: File, progress: (Float) -> Unit = {}): Boolean = try {
+        downloadOrThrow(url, out, progress)
+    } catch (e: Exception) {
+        android.util.Log.w("Http", "download failed: $url", e)
+        false
+    }
 
     private fun downloadOrThrow(url: String, out: File, progress: (Float) -> Unit): Boolean {
         out.parentFile?.mkdirs()
         val tmp = File(out.path + ".part")
         val c = open(url, emptyMap())
         try {
-            if (c.responseCode !in 200..299) return false
+            if (c.responseCode !in 200..299) { android.util.Log.w("Http", "download HTTP ${c.responseCode}: $url"); return false }
             val total = c.contentLengthLong
             var done = 0L
             c.inputStream.use { input ->
