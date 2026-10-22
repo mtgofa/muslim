@@ -16,14 +16,14 @@ val hasSigning = keystorePropsFile.exists()
 
 android {
     namespace = "com.mtgofa.muslim"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.mtgofa.muslim"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 61
-        versionName = "1.0.60"
+        targetSdk = 36
+        versionCode = 63
+        versionName = "1.0.61"
         vectorDrawables { useSupportLibrary = true }
         // auto-update source (GitHub Releases latest). Works for a PUBLIC repo without any
         // token; leave empty to disable. The release "name" must carry " (code N)".

@@ -204,6 +204,27 @@ private fun App(openMushaf: MutableStateFlow<Boolean>, openPage: MutableStateFlo
 
     BackHandler(stack.size > 1) { pop() }
 
+    // the app crashed last time: offer to mail the report, which is the only way we learn why
+    var crash by remember { mutableStateOf(com.mtgofa.muslim.data.CrashLog.read(ctx)) }
+    crash?.let { report ->
+        fun done() { com.mtgofa.muslim.data.CrashLog.clear(ctx); crash = null }
+        AlertDialog(
+            onDismissRequest = ::done,
+            title = { Text("حدث خطأ في المرة السابقة") },
+            text = { Text("نأسف لذلك. أرسل لنا تقرير العطل لنصلحه، وهو لا يحوي أي بيانات شخصية.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val mail = Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:gofait25@gmail.com"))
+                        .putExtra(Intent.EXTRA_SUBJECT, "مسلم — تقرير عطل")
+                        .putExtra(Intent.EXTRA_TEXT, report)
+                    runCatching { ctx.startActivity(mail) }
+                    done()
+                }) { Text("إرسال التقرير") }
+            },
+            dismissButton = { TextButton(onClick = ::done) { Text("تجاهل") } },
+        )
+    }
+
     if (!dbReady) {
         Box(Modifier.fillMaxSize().background(Palette.Bg), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
         return

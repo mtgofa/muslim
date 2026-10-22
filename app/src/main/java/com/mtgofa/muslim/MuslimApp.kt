@@ -11,6 +11,7 @@ import kotlin.concurrent.thread
 class MuslimApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        com.mtgofa.muslim.data.CrashLog.install(this)
         Settings.init(this)
         com.mtgofa.muslim.data.Content.init(this)
         createChannels()

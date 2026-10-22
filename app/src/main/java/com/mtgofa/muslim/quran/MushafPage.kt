@@ -307,11 +307,27 @@ fun MushafPageView(
         val pageH = if (landscape) pw * 1.55f else h
         val z = if (landscape) 1f else zoom
         var layout by remember(page, style, pw, pageH, z) { mutableStateOf<PageLayout?>(null) }
+        var failed by remember(page, style, pw, pageH, z) { mutableStateOf(false) }
         LaunchedEffect(page, style, pw, pageH, z) {
-            layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, z, nudge = if (landscape) LANDSCAPE_NUDGE else 0f) }
+            // a page that can't be laid out (a damaged font file, a full disk) shows a message and
+            // keeps the report, rather than closing the whole app
+            try {
+                layout = withContext(Dispatchers.Default) { layoutPage(ctx, QuranDb.page(page), pw, pageH, style, z, nudge = if (landscape) LANDSCAPE_NUDGE else 0f) }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                com.mtgofa.muslim.data.CrashLog.record(ctx, "صفحة المصحف $page", e)
+                failed = true
+            }
         }
         val ink = Color(0xFF1A1A1A)
         val hl = Color(0x2A0F7A62)
+        if (failed) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                androidx.compose.material3.Text("تعذّر عرض هذه الصفحة", color = Color(0xFF8A7A5A))
+            }
+            return@BoxWithConstraints
+        }
         val lay = layout ?: return@BoxWithConstraints
         val explained = remember(lay, wordMode) {
             if (!wordMode) emptyMap() else lay.words.filter { it.wordIndex >= 0 }
