@@ -145,6 +145,11 @@ object Settings {
         get() = sp.getBoolean("qiyamVibrate", false)
         set(v) = edit { putBoolean("qiyamVibrate", v) }
     /** the sound of the reminders before the adhan (and of the short alert mode) */
+    /** the adhan file the user picked from the phone (a content:// uri kept with read access) */
+    var customAdhan: String?
+        get() = sp.getString("customAdhan", null)
+        set(v) = edit { if (v == null) remove("customAdhan") else putString("customAdhan", v) }
+
     /** the sound file the user picked from the phone (a content:// uri kept with read access) */
     var customSound: String?
         get() = sp.getString("customSound", null)

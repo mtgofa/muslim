@@ -31,14 +31,22 @@ object Muezzins {
             }.also { cache = it }
         }
 
+    /** the user's own file from the phone: listed last, available once one is picked */
+    const val DEVICE_ID = "device"
+    val device = Muezzin(DEVICE_ID, "ملف من جهازي")
+
     fun byId(id: String) = all.firstOrNull { it.id == id } ?: all.first()
 
     private fun localFile(ctx: Context, m: Muezzin) = File(File(com.mtgofa.muslim.data.Storage.dp(ctx).filesDir, "adhan"), "${m.id}.mp3")
 
-    fun isAvailable(ctx: Context, m: Muezzin) = m.bundled || localFile(ctx, m).length() > 50_000
+    fun isAvailable(ctx: Context, m: Muezzin) = when {
+        m.id == DEVICE_ID -> com.mtgofa.muslim.data.Settings.customAdhan != null
+        else -> m.bundled || localFile(ctx, m).length() > 50_000
+    }
 
     /** A playable Uri, falling back to the first bundled voice if this one is not downloaded. */
     fun uri(ctx: Context, m: Muezzin): Uri = when {
+        m.id == DEVICE_ID -> com.mtgofa.muslim.data.Settings.customAdhan?.let { Uri.parse(it) } ?: uri(ctx, all.first())
         m.bundled -> Uri.parse("android.resource://${ctx.packageName}/${m.raw}")
         isAvailable(ctx, m) -> Uri.fromFile(localFile(ctx, m))
         else -> uri(ctx, all.first())

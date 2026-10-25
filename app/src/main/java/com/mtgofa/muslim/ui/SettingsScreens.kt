@@ -140,10 +140,16 @@ fun SettingsScreen(
                 RowDivider()
                 SettingRow("صلاة العصر", Settings.madhab.ar, Icons.Rounded.Tune, { picker = "madhab" }) { Chevron() }
             }
+            SectionTitle("الأصوات")
+            Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
+                SettingRow("صوت الأذان", Muezzins.byId(Settings.muezzin).name, Icons.Rounded.RecordVoiceOver, onMuezzin) { Chevron() }
+                RowDivider()
+                SettingRow("صوت الإقامة", Settings.iqamaSound.ar, Icons.Rounded.Notifications, { picker = "iqamaSound" }) { Chevron() }
+                RowDivider()
+                SettingRow("صوت التنبيه", Settings.preSound.ar, Icons.Rounded.Notifications, { picker = "preSound" }) { Chevron() }
+            }
             SectionTitle("الأذان والتنبيهات")
             Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
-                SettingRow("صوت المؤذن", Muezzins.byId(Settings.muezzin).name, Icons.Rounded.RecordVoiceOver, onMuezzin) { Chevron() }
-                RowDivider()
                 SettingRow("ضبط كل صلاة", "نوع التنبيه، تعديل الوقت، التنبيه قبل الأذان، والإقامة", Icons.Rounded.Alarm, onPrayers) { Chevron() }
                 RowDivider()
                 SettingRow("تنبيه قيام الليل", com.mtgofa.muslim.data.Qiyam.summary(), Icons.Rounded.Bedtime, onQiyam) { Chevron() }
@@ -154,18 +160,14 @@ fun SettingsScreen(
                     Icons.Rounded.VolumeUp, Settings.adhanInSilent,
                 ) { Settings.adhanInSilent = it }
                 RowDivider()
-                SettingRow("صوت التنبيه قبل الأذان", Settings.preSound.ar, Icons.Rounded.Notifications, { picker = "preSound" }) { Chevron() }
-                RowDivider()
-                SettingRow("صوت تنبيه الإقامة", Settings.iqamaSound.ar, Icons.Rounded.Notifications, { picker = "iqamaSound" }) { Chevron() }
-                RowDivider()
                 SwitchRow("إيقاف الأذان أثناء المكالمات", null, Icons.Rounded.Notifications, Settings.muteInCall) { Settings.muteInCall = it }
-            }
-            SectionTitle("ضمان عمل الأذان")
-            Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
+                RowDivider()
                 SwitchRow("إشعار الصلاة القادمة الدائم", "يُبقي التطبيق يعمل دائماً ولا يغلقه النظام", Icons.Rounded.PushPin, Settings.keepAlive) {
                     Settings.keepAlive = it; KeepAliveService.refresh(ctx)
                 }
-                RowDivider()
+            }
+            SectionTitle("ضمان عمل الأذان")
+            Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
                 SettingRow("فحص إعدادات الهاتف", "البطارية، المنبّهات الدقيقة، الإشعارات", Icons.Rounded.Shield, onReliability) { Chevron() }
             }
             SectionTitle("المصحف")
@@ -326,6 +328,15 @@ fun MuezzinScreen(onBack: () -> Unit) {
     var rev by remember { mutableStateOf(0) }
     var fajrMode by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // an adhan file from the phone: the picker grants read access, kept across restarts
+    val pickAdhan = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { ctx.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            Settings.customAdhan = uri.toString()
+            if (fajrMode) Settings.fajrMuezzin = Muezzins.DEVICE_ID else Settings.muezzin = Muezzins.DEVICE_ID
+            rev++
+        }
+    }
     // a preview must not outlive the page (it would only stop from the notification)
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { AdhanService.stopPreview(ctx) } }
 
@@ -346,7 +357,19 @@ fun MuezzinScreen(onBack: () -> Unit) {
                 if (fajrMode) item {
                     MuezzinRow("مثل باقي الصلوات (بدون «الصلاة خير من النوم»)", Settings.fajrMuezzin.isEmpty(), true, null, false, null, {}, { Settings.fajrMuezzin = "" }, null)
                 }
-                items(Muezzins.all, key = { it.id }) { m ->
+                items(Muezzins.all + Muezzins.device, key = { it.id }) { m ->
+                    if (m.id == Muezzins.DEVICE_ID) {
+                        val chosen = Settings.customAdhan != null
+                        val selected = if (fajrMode) Settings.fajrMuezzin == m.id else Settings.muezzin == m.id
+                        MuezzinRow(
+                            m.name, selected, chosen, null, false,
+                            if (chosen) "اضغط ✓ للاختيار، أو لتغيير الملف" else "اختر ملف صوتي من الهاتف",
+                            onPreview = { if (chosen) AdhanService.preview(ctx, m.id) else pickAdhan.launch(arrayOf("audio/*")) },
+                            onSelect = { if (chosen) { if (fajrMode) Settings.fajrMuezzin = m.id else Settings.muezzin = m.id } else pickAdhan.launch(arrayOf("audio/*")) },
+                            onDelete = null,
+                        )
+                        return@items
+                    }
                     val available = Muezzins.isAvailable(ctx, m)
                     val selected = if (fajrMode) Settings.fajrMuezzin == m.id else Settings.muezzin == m.id
                     val playing = sounding != null && sounding?.prayer == null && sounding?.title == m.name
