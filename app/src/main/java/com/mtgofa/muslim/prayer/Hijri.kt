@@ -18,13 +18,10 @@ data class HijriDate(val day: Int, val month: Int, val year: Int) {
 }
 
 object Hijri {
-    /** Days added to the Umm al-Qura date to follow the local moon sighting (−2..+2). */
-    @Volatile var adjustDays: Int = 0
-
     fun of(date: LocalDate): HijriDate {
         val cal = IslamicCalendar(ULocale("ar@calendar=islamic-umalqura"))
         cal.calculationType = IslamicCalendar.CalculationType.ISLAMIC_UMALQURA
-        val millis = date.plusDays(adjustDays.toLong()).atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val millis = date.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         cal.timeInMillis = millis
         return HijriDate(
             cal.get(IslamicCalendar.DAY_OF_MONTH),

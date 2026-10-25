@@ -25,7 +25,6 @@ object Settings {
         val dp = Storage.dp(ctx)
         if (Storage.unlocked(ctx)) dp.moveSharedPreferencesFrom(ctx.applicationContext, "settings")
         sp = dp.getSharedPreferences("settings", Context.MODE_PRIVATE)
-        Hijri.adjustDays = hijriAdjust
     }
 
     private fun edit(block: SharedPreferences.Editor.() -> Unit) {
@@ -53,14 +52,6 @@ object Settings {
             return runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.systemDefault())
         }
 
-    /**
-     * Whole hours added to every time, for a phone whose time-zone data is out of date (Egypt's
-     * summer time came back in 2023) or set by hand to another zone. 0 = follow the zone.
-     */
-    var hourShift: Int
-        get() = sp.getInt("hourShift", 0)
-        set(v) = edit { putInt("hourShift", v) }
-
     /** "phone zone|location zone" the user said is fine, so the warning stays away for that pair. */
     var zoneWarnDismissed: String
         get() = sp.getString("zoneWarnOk", "")!!
@@ -79,14 +70,11 @@ object Settings {
     var madhab: AsrMadhab
         get() = runCatching { AsrMadhab.valueOf(sp.getString("madhab", "SHAFII")!!) }.getOrDefault(AsrMadhab.SHAFII)
         set(v) = edit { putString("madhab", v.name) }
-    var hijriAdjust: Int
-        get() = sp.getInt("hijriAdj", 0)
-        set(v) { Hijri.adjustDays = v; edit { putInt("hijriAdj", v) } }
 
     // ---- per prayer ----------------------------------------------------------------------
     fun offset(p: Prayer) = sp.getInt("off_${p.name}", 0)
     fun setOffset(p: Prayer, v: Int) = edit { putInt("off_${p.name}", v) }
-    fun offsets(): Map<Prayer, Int> = Prayer.entries.associateWith { offset(it) + hourShift * 60 }
+    fun offsets(): Map<Prayer, Int> = Prayer.entries.associateWith { offset(it) }
 
     fun mode(p: Prayer): AlertMode = runCatching {
         AlertMode.valueOf(sp.getString("mode_${p.name}", if (p.hasAdhan) "ADHAN" else "SILENT")!!)
@@ -157,11 +145,16 @@ object Settings {
         get() = sp.getBoolean("qiyamVibrate", false)
         set(v) = edit { putBoolean("qiyamVibrate", v) }
     /** the sound of the reminders before the adhan (and of the short alert mode) */
+    /** the sound file the user picked from the phone (a content:// uri kept with read access) */
+    var customSound: String?
+        get() = sp.getString("customSound", null)
+        set(v) = edit { if (v == null) remove("customSound") else putString("customSound", v) }
+
     var preSound: com.mtgofa.muslim.prayer.AlertSound
         get() = com.mtgofa.muslim.prayer.AlertSound.of(sp.getString("preSound", null), com.mtgofa.muslim.prayer.AlertSound.TASBEEH)
         set(v) = edit { putString("preSound", v.name) }
     var iqamaSound: com.mtgofa.muslim.prayer.AlertSound
-        get() = com.mtgofa.muslim.prayer.AlertSound.of(sp.getString("iqamaSound", null), com.mtgofa.muslim.prayer.AlertSound.IQAMA)
+        get() = com.mtgofa.muslim.prayer.AlertSound.of(sp.getString("iqamaSound", null), com.mtgofa.muslim.prayer.AlertSound.NONE)
         set(v) = edit { putString("iqamaSound", v.name) }
     var qiyamSound: com.mtgofa.muslim.prayer.AlertSound
         get() = com.mtgofa.muslim.prayer.AlertSound.of(sp.getString("qiyamSound", null), com.mtgofa.muslim.prayer.AlertSound.TASBEEH)
@@ -175,7 +168,7 @@ object Settings {
         set(v) = edit { putBoolean("adhanInSilent", v) }
     /** a persistent notification that keeps the app alive and shows the next prayer */
     var keepAlive: Boolean
-        get() = sp.getBoolean("keepAlive", true)
+        get() = sp.getBoolean("keepAlive", false)
         set(v) = edit { putBoolean("keepAlive", v) }
     /** pause the adhan while the phone is in a call */
     var muteInCall: Boolean

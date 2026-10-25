@@ -9,18 +9,26 @@ import com.mtgofa.muslim.R
  * from the iqama, besides «سبحان الله». Each alert type picks its own.
  */
 enum class AlertSound(val ar: String, private val raw: Int) {
+    NONE("إيقاف", 0),
+    /** a file the user picked from the phone; the uri is in Settings.customSound */
+    DEVICE("ملف من جهازي", 0),
     TASBEEH("سبحان الله", R.raw.tasbeeh),
     HAYYA("حيّ على الصلاة", R.raw.alert_hayya),
     TAKBIR("الله أكبر", R.raw.alert_takbir),
     QAD_QAMAT("قد قامت الصلاة", R.raw.alert_qad_qamat),
     IQAMA("الإقامة كاملة", R.raw.iqama);
 
-    fun uri(ctx: Context): Uri = Uri.parse("android.resource://${ctx.packageName}/$raw")
+    /** null for «إيقاف»: nothing plays */
+    fun uri(ctx: Context): Uri? = when (this) {
+        NONE -> null
+        DEVICE -> com.mtgofa.muslim.data.Settings.customSound?.let { Uri.parse(it) }
+        else -> Uri.parse("android.resource://${ctx.packageName}/$raw")
+    }
 
     companion object {
         /** before the adhan, the «تنبيه» mode at prayer time, and the night prayer alarm */
-        val FOR_ALERTS = listOf(TASBEEH, HAYYA, TAKBIR)
-        val FOR_IQAMA = listOf(IQAMA, QAD_QAMAT, HAYYA, TASBEEH)
+        val FOR_ALERTS = listOf(TASBEEH, HAYYA, TAKBIR, DEVICE)
+        val FOR_IQAMA = listOf(NONE, IQAMA, QAD_QAMAT, HAYYA, TASBEEH, DEVICE)
 
         fun of(name: String?, fallback: AlertSound) = entries.firstOrNull { it.name == name } ?: fallback
     }

@@ -135,8 +135,8 @@ class AdhanService : Service() {
 
         when {
             fullAdhan -> startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
-            type == EventType.IQAMA -> startSound(Settings.iqamaSound.uri(this), repeats = 1)
-            else -> startSound(Settings.preSound.uri(this), repeats = 1)
+            type == EventType.IQAMA -> Settings.iqamaSound.uri(this)?.let { startSound(it, repeats = 1) }
+            else -> Settings.preSound.uri(this)?.let { startSound(it, repeats = 1) }
         }
     }
 
@@ -146,7 +146,7 @@ class AdhanService : Service() {
         startInForeground(buildNote("قيام الليل", "﴿وَبِالْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ﴾", ongoing = true, fullScreen = true))
         finishedNote = null
         if (Settings.qiyamVibrate) vibrateAlert(Haptics.QIYAM)
-        else startSound(Settings.qiyamSound.uri(this), repeats = if (Settings.qiyamSound == AlertSound.TASBEEH) 6 else 3, alarm = true, gapMs = 1500)
+        else Settings.qiyamSound.uri(this)?.let { startSound(it, repeats = if (Settings.qiyamSound == AlertSound.TASBEEH) 6 else 3, alarm = true, gapMs = 1500) }
     }
 
     private fun preview(intent: Intent) {
@@ -157,7 +157,7 @@ class AdhanService : Service() {
         startInForeground(buildNote("تجربة الصوت", title, ongoing = true, fullScreen = false))
         finishedNote = null
         if (muezzin != null) startSound(Muezzins.uri(this, Muezzins.byId(muezzin)), 1)
-        else startSound(sound.uri(this), 1)
+        else sound.uri(this)?.let { startSound(it, 1) }
     }
 
     private fun rawUri(res: Int): Uri = Uri.parse("android.resource://$packageName/$res")

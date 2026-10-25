@@ -52,7 +52,6 @@ import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Button
@@ -140,18 +139,6 @@ fun SettingsScreen(
                 SettingRow("طريقة الحساب", Settings.method.ar, Icons.Rounded.Calculate, { picker = "method" }) { Chevron() }
                 RowDivider()
                 SettingRow("صلاة العصر", Settings.madhab.ar, Icons.Rounded.Tune, { picker = "madhab" }) { Chevron() }
-                RowDivider()
-                SettingRow("ضبط الساعة", "إذا كانت كل المواقيت متقدّمة أو متأخرة ساعة (التوقيت الصيفي)", Icons.Rounded.Schedule) {
-                    Stepper(Settings.hourShift, -1..1, format = { if (it == 0) "تلقائي" else (if (it > 0) "+" else "−") + arabicDigits(1) + " ساعة" }) {
-                        Settings.hourShift = it; Scheduler.schedule(ctx)
-                    }
-                }
-                RowDivider()
-                SettingRow("التاريخ الهجري", Hijri.of(LocalDate.now()).toString(), Icons.Rounded.CalendarMonth) {
-                    Stepper(Settings.hijriAdjust, -2..2, format = { if (it == 0) "بدون" else (if (it > 0) "+" else "−") + arabicDigits(kotlin.math.abs(it)) + " يوم" }) {
-                        Settings.hijriAdjust = it
-                    }
-                }
             }
             SectionTitle("الأذان والتنبيهات")
             Card(Modifier.padding(horizontal = 16.dp), padding = PaddingValues(vertical = 4.dp)) {
@@ -240,10 +227,38 @@ fun SoundSheet(title: String, options: List<AlertSound>, selected: AlertSound, o
     val sounding by AdhanService.sounding.collectAsState()
     var current by remember { mutableStateOf(selected) }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { AdhanService.stopPreview(ctx) } }
+    // a file from the phone: the picker grants read access, kept across restarts
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { ctx.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            Settings.customSound = uri.toString()
+            current = AlertSound.DEVICE; onPick(AlertSound.DEVICE); AdhanService.preview(ctx, null, AlertSound.DEVICE)
+        }
+    }
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 12.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
             options.forEach { o ->
+                if (o == AlertSound.DEVICE) {
+                    Row(
+                        Modifier.fillMaxWidth().clickable { pickFile.launch(arrayOf("audio/*")) }.padding(horizontal = 12.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(o == current, { pickFile.launch(arrayOf("audio/*")) })
+                        Column(Modifier.weight(1f)) {
+                            Text(o.ar, style = MaterialTheme.typography.bodyLarge)
+                            Text(if (Settings.customSound == null) "اضغط لاختيار ملف صوتي" else "اضغط لتغيير الملف", style = MaterialTheme.typography.bodySmall, color = Palette.Muted)
+                        }
+                        if (Settings.customSound != null && o == current) {
+                            IconButton(onClick = { AdhanService.preview(ctx, null, AlertSound.DEVICE) }) {
+                                Box(Modifier.size(36.dp).background(Palette.EmeraldSoft, CircleShape), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Rounded.PlayArrow, "استماع", tint = Palette.Emerald)
+                                }
+                            }
+                        }
+                    }
+                    return@forEach
+                }
                 val playing = sounding?.prayer == null && sounding?.alarm == false && sounding?.title == o.ar
                 Row(
                     Modifier.fillMaxWidth().clickable { current = o; onPick(o); AdhanService.preview(ctx, null, o) }
