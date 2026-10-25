@@ -22,8 +22,8 @@ android {
         applicationId = "com.mtgofa.muslim"
         minSdk = 26
         targetSdk = 36
-        versionCode = 64
-        versionName = "1.0.62"
+        versionCode = 65
+        versionName = "1.0.63"
         vectorDrawables { useSupportLibrary = true }
         // auto-update source (GitHub Releases latest). Works for a PUBLIC repo without any
         // token; leave empty to disable. The release "name" must carry " (code N)".
