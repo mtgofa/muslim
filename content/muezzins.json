@@ -1,75 +1,10 @@
 [
  {
-  "id": "abdulbasit",
-  "name": "عبد الباسط عبد الصمد"
- },
- {
   "id": "makkah",
   "name": "أذان الحرم المكي"
  },
  {
-  "id": "ali_mulla",
-  "name": "علي ملا — الحرم المكي",
-  "url": "https://raw.githubusercontent.com/mtgofa/muslim/main/content/audio/ali_mulla.mp3"
- },
- {
-  "id": "refaat",
-  "name": "محمد رفعت",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Mohammad%20Ref3at.mp3"
- },
- {
-  "id": "minshawy",
-  "name": "محمد صديق المنشاوي",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Mohammad%20Almenshawy.mp3"
- },
- {
-  "id": "naina",
-  "name": "أحمد نعينع",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Ahmad%20Nuyne3.mp3"
- },
- {
-  "id": "alafasy",
-  "name": "مشاري العفاسي",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Mishary%20Alafasi.mp3"
- },
- {
-  "id": "qatami",
-  "name": "ناصر القطامي",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Nasser%20Alqatami.mp3"
- },
- {
-  "id": "malki",
-  "name": "حمدان المالكي",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Hamdan%20Almalki.mp3"
- },
- {
-  "id": "zahrani",
-  "name": "منصور الزهراني",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Mansoor%20Az-Zahrani.mp3"
- },
- {
-  "id": "arkani",
-  "name": "إبراهيم الأركاني",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Ibrahim%20Al-Arkani.mp3"
- },
- {
-  "id": "deghreri",
-  "name": "حمد الدغريري",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Hamad%20Deghreri.mp3"
- },
- {
-  "id": "hamathani",
-  "name": "ماجد الحمداني",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Majed%20Al-hamathani.mp3"
- },
- {
-  "id": "khatba",
-  "name": "صهيب خطبا",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Suhaib%20Khatba.mp3"
- },
- {
-  "id": "fajr_chebae",
-  "name": "أذان الفجر — مالك شيبة",
-  "url": "https://raw.githubusercontent.com/abodehq/Athan-MP3/master/Sounds/Athan%20Al-fajer%20-%20Malek%20chebae.mp3"
+  "id": "short",
+  "name": "أذان مختصر (الله أكبر)"
  }
 ]

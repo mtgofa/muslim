@@ -1,7 +1,6 @@
 package com.mtgofa.muslim.prayer
 
 import android.os.Bundle
-import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,7 +36,7 @@ import com.mtgofa.muslim.data.Settings
 import com.mtgofa.muslim.ui.MuslimTheme
 import java.time.LocalDate
 
-/** Shown over the lock screen while the adhan plays; any volume key or the button stops it. */
+/** Shown over the lock screen while the adhan plays; the button stops it, the volume keys only change the volume. */
 class AdhanActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -81,12 +80,5 @@ class AdhanActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
-            AdhanService.stop(this); finish(); return true
-        }
-        return super.onKeyDown(keyCode, event)
     }
 }

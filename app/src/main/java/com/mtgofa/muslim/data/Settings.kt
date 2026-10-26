@@ -95,7 +95,7 @@ object Settings {
 
     // ---- adhan sound ---------------------------------------------------------------------
     var muezzin: String
-        get() = sp.getString("muezzin", "abdulbasit")!!
+        get() = sp.getString("muezzin", "makkah")!!
         set(v) = edit { putString("muezzin", v) }
     /** separate voice for Fajr ("" = same as the others) */
     var fajrMuezzin: String
