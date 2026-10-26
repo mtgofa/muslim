@@ -21,6 +21,39 @@ object Reliability {
         ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
     /**
+     * The adhan screen over the lock screen. Since Android 14 a store install of an app that is
+     * not an alarm clock or a dialer may be refused this, and then only a notification appears.
+     */
+    fun fullScreen(ctx: Context) = Build.VERSION.SDK_INT < 34 ||
+        ctx.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+
+    fun openFullScreen(ctx: Context) {
+        runCatching {
+            ctx.startActivity(Intent(AndroidSettings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }.onFailure { openAppInfo(ctx) }
+    }
+
+    val isXiaomi: Boolean
+        get() = Build.MANUFACTURER.lowercase() in setOf("xiaomi", "redmi", "poco")
+
+    /**
+     * Xiaomi's own permissions for this app («show on lock screen», «display pop-up windows while
+     * running in the background»): without them the adhan screen never appears on MIUI/HyperOS.
+     */
+    fun openXiaomiPermissions(ctx: Context) {
+        val tries = listOf(
+            Intent("miui.intent.action.APP_PERM_EDITOR").setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity"),
+            Intent("miui.intent.action.APP_PERM_EDITOR").setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.AppPermissionsEditorActivity"),
+            Intent("miui.intent.action.APP_PERM_EDITOR"),
+        )
+        for (i in tries) {
+            i.putExtra("extra_pkgname", ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (runCatching { ctx.startActivity(i) }.isSuccess) return
+        }
+        openAppInfo(ctx)
+    }
+
+    /**
      * What the home screen warns about: only what stops the adhan outright. Battery restriction
      * and the persistent notification are offered on the reliability page but never nagged about.
      */

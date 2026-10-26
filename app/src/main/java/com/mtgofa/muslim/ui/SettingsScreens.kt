@@ -554,6 +554,8 @@ fun ReliabilityScreen(onBack: () -> Unit) {
                 RowDivider()
                 CheckRow("المنبّهات الدقيقة", "لينطلق الأذان في الدقيقة نفسها", Reliability.exactAlarms(ctx)) { Reliability.openExactAlarm(ctx) }
                 RowDivider()
+                CheckRow("شاشة الأذان", "تظهر فوق قفل الشاشة، وأزرار الصوت توقف الأذان", Reliability.fullScreen(ctx)) { Reliability.openFullScreen(ctx) }
+                RowDivider()
                 CheckRow("الإشعار الدائم للصلاة القادمة", "يُبقي التطبيق حيّاً في الخلفية", Settings.keepAlive) {
                     Settings.keepAlive = true; KeepAliveService.refresh(ctx); rev++
                 }
@@ -567,6 +569,12 @@ fun ReliabilityScreen(onBack: () -> Unit) {
                         Button(onClick = { Reliability.openAutostart(ctx) }) { Text("التشغيل التلقائي") }
                         Spacer(Modifier.width(8.dp))
                         OutlinedButton(onClick = { Reliability.openAppInfo(ctx) }) { Text("معلومات التطبيق") }
+                    }
+                    if (Reliability.isXiaomi) {
+                        Spacer(Modifier.height(12.dp))
+                        Text("في شاومي فعّل أيضاً «العرض على شاشة القفل» و«عرض النوافذ المنبثقة أثناء العمل في الخلفية»، وإلا لن تظهر شاشة الأذان.", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Button(onClick = { Reliability.openXiaomiPermissions(ctx) }) { Text("صلاحيات شاومي") }
                     }
                 }
             }

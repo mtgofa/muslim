@@ -46,6 +46,68 @@ class AdhanService : Service() {
     private var focus: AudioFocusRequest? = null
     private val main = Handler(Looper.getMainLooper())
     private var finishedNote: Notification? = null
+    /**
+     * While a sound plays, a media session with "remote" volume takes the volume keys: Android
+     * routes the hardware keys to it (screen on or off, app open or not), and any press stops
+     * the sound instead of changing the volume.
+     */
+    private var keys: android.media.session.MediaSession? = null
+
+    /**
+     * Not every phone hands the volume keys to that session (some Xiaomi and other skins keep
+     * them, mostly with the screen off): there a press changes the phone's volume instead. So the
+     * press is also caught by its effect: any volume change while the adhan sounds stops it, and
+     * the volume is put back as it was, since the press only meant «stop».
+     */
+    private var volumeWatch: android.content.BroadcastReceiver? = null
+
+    private fun watchVolume() {
+        if (volumeWatch != null) return
+        val am = getSystemService(AudioManager::class.java)
+        val before = VOLUME_STREAMS.associateWith { runCatching { am.getStreamVolume(it) }.getOrDefault(-1) }
+        val watch = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                val stream = i.getIntExtra(EXTRA_VOLUME_STREAM_TYPE, -1)
+                val was = before[stream] ?: return
+                if (was < 0 || am.getStreamVolume(stream) == was) return
+                runCatching { am.setStreamVolume(stream, was, 0) }
+                main.post { finish() }
+            }
+        }
+        volumeWatch = watch
+        androidx.core.content.ContextCompat.registerReceiver(
+            this, watch, android.content.IntentFilter(VOLUME_CHANGED), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    private fun grabVolumeKeys() {
+        watchVolume()
+        if (keys != null) return
+        keys = android.media.session.MediaSession(this, "adhan-volume-keys").apply {
+            setPlaybackToRemote(object : android.media.VolumeProvider(VOLUME_CONTROL_RELATIVE, 100, 50) {
+                override fun onAdjustVolume(direction: Int) { main.post { finish() } }
+                override fun onSetVolumeTo(volume: Int) { main.post { finish() } }
+            })
+            setPlaybackState(
+                android.media.session.PlaybackState.Builder()
+                    .setState(android.media.session.PlaybackState.STATE_PLAYING, 0, 1f)
+                    .setActions(android.media.session.PlaybackState.ACTION_STOP or android.media.session.PlaybackState.ACTION_PAUSE)
+                    .build(),
+            )
+            setCallback(object : android.media.session.MediaSession.Callback() {
+                override fun onStop() { finish() }
+                override fun onPause() { finish() }
+            })
+            isActive = true
+        }
+    }
+
+    private fun releaseVolumeKeys() {
+        keys?.run { isActive = false; release() }
+        keys = null
+        volumeWatch?.let { runCatching { unregisterReceiver(it) } }
+        volumeWatch = null
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -81,6 +143,7 @@ class AdhanService : Service() {
 
         startInForeground(buildNote(title, text, ongoing = true, fullScreen = fullAdhan))
         finishedNote = buildNote(title, text, ongoing = false, fullScreen = false)
+        if (fullAdhan) wakeScreen()
 
         val am = getSystemService(AudioManager::class.java)
         val inCall = am.mode == AudioManager.MODE_IN_CALL || am.mode == AudioManager.MODE_IN_COMMUNICATION
@@ -132,11 +195,34 @@ class AdhanService : Service() {
 
     private var vibrating = false
 
-    /** A silent alert in its own vibration pattern; the stop button ends it early. */
+    /**
+     * The screen is lit for the adhan. With the screen off Android sends the volume keys nowhere
+     * (they only change the volume of music that is playing), so the keys could not stop it. The
+     * adhan screen lights it too, but Android 14+ and Xiaomi may refuse to show that screen.
+     */
+    private var screenLock: android.os.PowerManager.WakeLock? = null
+
+    @Suppress("DEPRECATION")
+    private fun wakeScreen() {
+        if (screenLock != null) return
+        screenLock = runCatching {
+            getSystemService(android.os.PowerManager::class.java)
+                .newWakeLock(android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP, "muslim:adhan")
+                .apply { acquire(10 * 60_000L) }
+        }.getOrNull()
+    }
+
+    private fun releaseScreen() {
+        screenLock?.let { if (it.isHeld) runCatching { it.release() } }
+        screenLock = null
+    }
+
+    /** A silent alert in its own vibration pattern; the stop button and volume keys end it early. */
     private fun vibrateAlert(pattern: LongArray) {
         releasePlayer()
         vibrating = true
         Haptics.pattern(this, *pattern)
+        grabVolumeKeys()
         main.postDelayed({ finish() }, pattern.sum() + 300)
     }
 
@@ -164,13 +250,15 @@ class AdhanService : Service() {
                 prepare()
                 start()
             }
-            } catch (e: Exception) {
+            grabVolumeKeys()
+        } catch (e: Exception) {
             finish()
         }
     }
 
     private fun releasePlayer() {
         if (vibrating) { Haptics.cancel(this); vibrating = false }
+        releaseVolumeKeys()
         main.removeCallbacksAndMessages(null)
         player?.runCatching { stop(); release() }
         player = null
@@ -180,6 +268,7 @@ class AdhanService : Service() {
 
     private fun finish() {
         releasePlayer()
+        releaseScreen()
         _sounding.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         finishedNote?.let { getSystemService(NotificationManager::class.java).notify(NOTE_DONE, it) }
@@ -189,6 +278,7 @@ class AdhanService : Service() {
 
     override fun onDestroy() {
         releasePlayer()
+        releaseScreen()
         _sounding.value = null
         super.onDestroy()
     }
@@ -228,6 +318,14 @@ class AdhanService : Service() {
         const val ACTION_PLAY = "com.mtgofa.muslim.PLAY"
         const val ACTION_STOP = "com.mtgofa.muslim.STOP"
         const val ACTION_PREVIEW = "com.mtgofa.muslim.PREVIEW"
+
+        /** sent by the system on every volume change (not in the public SDK, stable since Android 4) */
+        private const val VOLUME_CHANGED = "android.media.VOLUME_CHANGED_ACTION"
+        private const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
+        private val VOLUME_STREAMS = listOf(
+            AudioManager.STREAM_RING, AudioManager.STREAM_ALARM, AudioManager.STREAM_MUSIC,
+            AudioManager.STREAM_NOTIFICATION, AudioManager.STREAM_SYSTEM,
+        )
         const val ACTION_QIYAM = "com.mtgofa.muslim.QIYAM"
         private const val NOTE_PLAYING = 10
         private const val NOTE_DONE = 11
