@@ -13,7 +13,7 @@ data class Muezzin(val id: String, val name: String, val raw: Int = 0, val url: 
 
 object Muezzins {
     /** voices shipped inside the APK, by id */
-    private val BUNDLED = mapOf("makkah" to R.raw.adhan_makkah, "short" to R.raw.adhan_short)
+    private val BUNDLED = mapOf("abdulbasit" to R.raw.adhan_abdulbasit, "makkah" to R.raw.adhan_makkah, "short" to R.raw.adhan_short)
 
     @Volatile private var cache: List<Muezzin>? = null
     init { com.mtgofa.muslim.data.Content.onChange { cache = null } }
