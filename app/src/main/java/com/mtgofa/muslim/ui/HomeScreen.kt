@@ -99,6 +99,9 @@ fun gregorian(d: LocalDate) = "${AR_DAYS[d.dayOfWeek.value - 1]} ${arabicDigits(
 /** How long after an adhan the header keeps counting up from it. */
 private val SINCE_WINDOW: Duration = Duration.ofMinutes(20)
 
+/** Ishraq prayer: this long after sunrise (the period the Al-Mosally app uses, ~15 to 20 minutes). */
+private val ISHRAQ_AFTER_SUNRISE: Duration = Duration.ofMinutes(20)
+
 fun countdown(d: Duration): String {
     val s = d.seconds.coerceAtLeast(0)
     return "%02d:%02d:%02d".format(java.util.Locale.US, s / 3600, (s / 60) % 60, s % 60)
@@ -155,21 +158,41 @@ fun HomeScreen(
             val since = Duration.between(prev, now)
             // for a while after an adhan the header counts up ("الظهر منذ") before moving on
             val justCalled = prevPrayer.hasAdhan && since < SINCE_WINDOW
+            // between sunrise and Dhuhr: the Ishraq prayer counts down to its time, then counts up
+            val ishraqAt = prev.plus(ISHRAQ_AFTER_SUNRISE)
+            val ishraq = prevPrayer == Prayer.SUNRISE && next == Prayer.DHUHR
+            val ishraqSpan = ISHRAQ_AFTER_SUNRISE.seconds.toFloat()
             PrayerHeader(
                 period = remember(now.withSecond(0).withNano(0), changes) { SkyPeriod.of(Scheduler.currentPrayer(now)) },
                 location = Settings.locationName,
                 hijri = Hijri.of(today).toString(),
                 date = gregorian(today),
-                label = if (justCalled) "أُذّن للصلاة" else "الصلاة القادمة",
+                label = when {
+                    justCalled -> "أُذّن للصلاة"
+                    ishraq -> "صلاة الإشراق"
+                    else -> "الصلاة القادمة"
+                },
                 nextName = when {
                     justCalled -> "${prevPrayer.label(prev.toLocalDate())} منذ"
+                    ishraq -> if (now.isBefore(ishraqAt)) "بعد" else "منذ"
                     next == Prayer.SUNRISE -> "الشروق"
                     else -> next.label(nextAt.toLocalDate())
                 },
-                nextTime = if (justCalled) "${clock(prev)} ${ampm(prev)}" else "${clock(nextAt)} ${ampm(nextAt)}",
-                remaining = if (justCalled) countdown(since) else countdown(Duration.between(now, nextAt)),
-                progress = if (justCalled) since.seconds.toFloat() / SINCE_WINDOW.seconds
-                    else 1f - Duration.between(now, nextAt).seconds.toFloat() / total,
+                nextTime = when {
+                    justCalled -> "${clock(prev)} ${ampm(prev)}"
+                    ishraq -> "${clock(ishraqAt)} ${ampm(ishraqAt)}"
+                    else -> "${clock(nextAt)} ${ampm(nextAt)}"
+                },
+                remaining = when {
+                    justCalled -> countdown(since)
+                    ishraq -> if (now.isBefore(ishraqAt)) countdown(Duration.between(now, ishraqAt)) else countdown(Duration.between(ishraqAt, now))
+                    else -> countdown(Duration.between(now, nextAt))
+                },
+                progress = when {
+                    justCalled -> since.seconds.toFloat() / SINCE_WINDOW.seconds
+                    ishraq -> if (now.isBefore(ishraqAt)) Duration.between(prev, now).seconds.toFloat() / ishraqSpan else 1f
+                    else -> 1f - Duration.between(now, nextAt).seconds.toFloat() / total
+                },
                 onLocation = onLocation,
             )
         }
