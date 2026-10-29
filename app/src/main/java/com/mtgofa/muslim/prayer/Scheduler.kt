@@ -84,11 +84,13 @@ object Scheduler {
         val show = PendingIntent.getActivity(
             ctx, 2, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
-        val exactOk = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        if (exactOk) {
-            // setAlarmClock is the one alarm type Doze and OEM battery savers never defer
+        // an alarm clock is what Doze and OEM savers never defer, and only an alarm clock may start
+        // the adhan service from the background. Android 14+ refuses it without the exact-alarm
+        // permission: then the alarm is still set (late is better than none) and the home page
+        // asks for the permission
+        try {
             am.setAlarmClock(AlarmManager.AlarmClockInfo(ev.at, show), pi)
-        } else {
+        } catch (e: SecurityException) {
             am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, ev.at, pi)
         }
         KeepAliveService.refresh(ctx)

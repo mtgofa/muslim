@@ -15,10 +15,14 @@ class AlarmReceiver : BroadcastReceiver() {
             val late = System.currentTimeMillis() - at
             // an alarm delivered long after its time (phone was off) must not blast an adhan
             if (late < LATE_LIMIT_MS) {
-                ContextCompat.startForegroundService(ctx, Intent(ctx, AdhanService::class.java).apply {
-                    action = AdhanService.ACTION_PLAY
-                    putExtras(intent)
-                })
+                // from an alarm clock the service may start; if a phone still refuses, the adhan
+                // is not started but the receiver must not crash the app
+                runCatching {
+                    ContextCompat.startForegroundService(ctx, Intent(ctx, AdhanService::class.java).apply {
+                        action = AdhanService.ACTION_PLAY
+                        putExtras(intent)
+                    })
+                }
             }
         }
         Scheduler.schedule(ctx)
