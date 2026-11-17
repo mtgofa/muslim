@@ -164,11 +164,13 @@ class AdhanService : Service() {
             return
         }
 
-        when {
-            fullAdhan -> startSound(Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer))), repeats = 1)
-            type == EventType.IQAMA -> Settings.iqamaSound.uri(this)?.let { startSound(it, repeats = 1) }
-            else -> Settings.preSound.uri(this)?.let { startSound(it, repeats = 1) }
+        // no sound chosen ("إيقاف"): nothing to play, so the notification must still go away
+        val uri = when {
+            fullAdhan -> Muezzins.uri(this, Muezzins.byId(Settings.muezzinFor(prayer)))
+            type == EventType.IQAMA -> Settings.iqamaSound.uri(this)
+            else -> Settings.preSound.uri(this)
         }
+        if (uri != null) startSound(uri, repeats = 1) else finish()
     }
 
     /** The night prayer alarm: its sound on the alarm volume a few times, or vibration only. */

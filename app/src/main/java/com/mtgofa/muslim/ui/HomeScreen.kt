@@ -159,8 +159,9 @@ fun HomeScreen(
             // for a while after an adhan the header counts up ("الظهر منذ") before moving on
             val justCalled = prevPrayer.hasAdhan && since < SINCE_WINDOW
             // between sunrise and Dhuhr: the Ishraq prayer counts down to its time, then counts up
+            // for as long as the "since" window, and only then the header moves on to Dhuhr
             val ishraqAt = prev.plus(ISHRAQ_AFTER_SUNRISE)
-            val ishraq = prevPrayer == Prayer.SUNRISE && next == Prayer.DHUHR
+            val ishraq = prevPrayer == Prayer.SUNRISE && next == Prayer.DHUHR && now.isBefore(ishraqAt.plus(SINCE_WINDOW))
             val ishraqSpan = ISHRAQ_AFTER_SUNRISE.seconds.toFloat()
             PrayerHeader(
                 period = remember(now.withSecond(0).withNano(0), changes) { SkyPeriod.of(Scheduler.currentPrayer(now)) },
